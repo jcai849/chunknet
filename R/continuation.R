@@ -11,7 +11,12 @@ format.datapool <- function(dp) {
 print.datapool <- function(dp) {
 	with.comment(cat(format(dp), sep='\n'))
 }
+str.datapool <- function(dp) {
+	cat("Datapool: ", length(dp), " Fixed Data Objects \n")
+	if (!length(dp)) ls.str(envir=dp)
+}
 
 store.data <- function(data) {
-	assign(key(identifier(data)), data, datapool())
+	assign(identifier(data), data, datapool())
 }
+store.computation <- store.data

@@ -21,6 +21,7 @@ is.location <- function(loc) inherits(loc, "location")
 locate.identifier <- function(id) {
 	LOCATION
 }
-locate.computation <- function(comp) {
-	locate(id(comp))
+locate.data <- function(data) {
+	locate(identifier(data))
 }
+locate.computation <- locate.data

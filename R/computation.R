@@ -1,49 +1,37 @@
-computation <- function(fun, input, id, ...) {
-	stopifnot(is.function(fun),
-		  if (missing(id)) TRUE else is.identifier(id))
-	structure(list(fun=fun,
-		       input=if (is.data(input) || is.computation(input))
-			       identifier(input) else input,
-		       id=if (missing(id)) NULL else id,
-		       addl=if (missing(...)) NULL else list(...)),
+computation.function <- function(fun, id, input, output, ...) {
+	stopifnot(is.identifier(id),
+		  if (missing(output)) TRUE else is.identifier(output))
+	structure(list(id=id,
+		       input=if (!is.list(input))  list(input) else input,
+		       val=fun,
+		       output=if (missing(output)) NULL else output),
 		  class="computation")
 }
-format.computation <- function(comp) {
-	as.character(c(underline("Computation", '='),
-		       underline("Function:", '-'),
-		       with.spacing(capture.output(str(fun(comp)))),
-		       underline("Input :", '-'),
-		       if (is.identifier(input(comp))) {
-			       with.spacing(format(input(comp)))
-		       } else {
-			       with.spacing(capture.output(str(input(comp))))
-		       },
-		       if (is.null(identifier(comp))) {
-			       NULL
-		       } else c(underline("Output Identifier:", '-'),
-				with.spacing(format(identifier(comp)))),
-		       if (is.null(addl(comp))) {
-			       NULL
-		       } else c(underline("Additional Input Identifiers:", '-'),
-				with.spacing(sapply(sapply(addl(comp), identifier),
-						    format)))))
-}
-print.computation <- function(comp) {
-	with.comment(cat(format(comp), sep="\n"))
-}
-fun.computation <- function(comp) comp$fun
+value.computation <- function(comp) comp$val
 input.computation <- function(comp) comp$input
 identifier.computation <- function(comp) comp$id
-addl.computation <- function(comp) comp$addl
+output.computation <- function(comp) comp$output
+
 is.computation <- function(comp) inherits(comp, "computation")
 
+format.computation <- function(comp) {
+	as.character(c(underline("Computation", '='),
+		       underline("Identifier :", '-'),
+		       with.spacing(format(identifier(comp))),
+		       underline("Value:", '-'),
+		       with.spacing(capture.output(str(fun(comp)))),
+		       underline("Input:", '-'),
+		       lapply(input(comp),
+			      function(i) with.spacing(
+			       if (is.computation(i) || is.data(i))
+			       format(i) else capture.output(str(i)))),
+		       underline("Output:", '-'),
+		       with.spacing(format(output(comp)))))
+}
+print.computation <- function(comp) cat(format(comp), sep="\n")
+str.computation <- function(comp) cat("Computation: ", str(identifier(comp)))
+
 request.computation <- function(comp, wait) {
-	# send request to remote process, return computation
-	comp
-}
-data.computation <- function(comp) {
-	data(identifier(comp))
-}
-value.computation <- function(comp) {
-	value(identifier(comp))
+	# send request to remote process, return reference to the data
+	send(comp, to=l)
 }

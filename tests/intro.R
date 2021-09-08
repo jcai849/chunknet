@@ -1,31 +1,38 @@
+"LOCAL MACHINE:"
+
 library(largerscale)
 
-# Showing some of the main actors:
-(id <- identifier("data", "<unique-key-391>"))
-(loc <- locate(id))
+(vdata <- read.hdfs("/some/file/path"))
 
-(vcomp <- read.hdfs("/some/file/path"))
+"REMOTE MACHINE:"
 
-# locate where to perform the computation, transfer the computation
-# on the remote end receiving the compuation:
-
+(vcomp <- receive())
 (do(vcomp))
-
-# Concurrently on the local end:
-
-(localv <- data(vcomp))
-with.comment(value(localv))
-(transformation1 <- computation(fun=t.test,
-			       input=localv,
-			       identifier("computation", "<unique-key-234>")))
-(request(transformation1))
-
-# locate where to perform the computation, transfer the computation
-# on the remote end receiving the compuation:
-
-(do(transformation1))
-
-
-# The remote end's data pool:
-
 (datapool())
+
+"LOCAL MACHINE:"
+
+(v <- value(vdata))
+tdata <- do(t.test, v)
+
+"REMOTE MACHINE:"
+
+(tcomp <- receive())
+(do(tcomp))
+(datapool())
+
+"LOCAL MACHINE:"
+
+sdata <- do(summary, tdata)
+
+"REMOTE MACHINE:"
+
+(scomp <- receive())
+(do(scomp))
+(datapool())
+
+"LOCAL MACHINE:"
+
+(s <- value(sdata))
+
+# graph(sdata)
