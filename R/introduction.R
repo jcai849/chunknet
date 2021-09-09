@@ -1,8 +1,6 @@
 read.hdfs <- function(path) {
-	comp <- computation(function(path) 1:100,
-			    id=identifier("<unique-key-394>"),
-			    input=path,
-			    output=identifier("<unique-key-093>"))
-	request(comp, wait=FALSE)
+	comp <- computation(function(path) data.frame(y=1:100, x=1:100),
+			    input=path)
+	send(comp)
 	data(id=output(comp), computation=identifier(comp))
 }

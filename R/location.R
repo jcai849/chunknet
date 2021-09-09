@@ -4,19 +4,20 @@ location <- function(address, port) {
 	structure(list(address=address, port=port),
 		  class="location")
 }
-port.location <- function(loc) loc$port
 address.location <- function(loc) loc$address
-format.location <- function(loc) {
-	as.character(c(underline("Location", '='),
-		       underline("Address:", '-'),
-		       with.spacing(address(loc)),
-		       underline("Port:", '-'),
-		       with.spacing(port(loc))))
-}
-print.location <- function(loc) {
-	with.comment(cat(format(loc), sep="\n"))
-}
+port.location <- function(loc) loc$port
+
 is.location <- function(loc) inherits(loc, "location")
+
+format.location <- function(loc, ...) 
+	c("<Location", format(address(loc)), format(port(loc)), ">")
+print.location <- function(loc, ...) cat(format(loc), sep="\n")
+str.location <- function(loc, ...) {
+	cat("Location:\n")
+	strfields(loc,
+		  "Address", address,
+		  "Port", port)
+}
 
 locate.identifier <- function(id) {
 	LOCATION

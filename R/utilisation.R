@@ -8,3 +8,18 @@ with.comment <- function(x) {
 with.spacing <- function(x) {
 	paste0("  ", x)
 }
+strfields <- function(x, ...) {
+	i <- 1
+	while (i < ...length()) {
+		field <- ...elt(i)
+		cat(field, ": ", sep="")
+		fieldval <- capture.output(str(...elt(i+1)(x)))
+		if (length(fieldval) == 1) {
+			cat(fieldval, "\n")
+		} else {
+			cat(with.spacing(fieldval), sep="\n")
+		}
+		i <- i + 2
+	}
+	cat()
+}

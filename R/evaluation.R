@@ -1,27 +1,22 @@
 data.identifier <- function(id, computation) {
-	stopifnot(is.identity(computation),
-		  is.identity(id))
-	structure(list(comp=comp, id=id), class="data")
+	stopifnot(is.identifier(computation),
+		  is.identifier(id))
+	structure(list(comp=computation, id=id), class="data")
 }
 identifier.data <- function(data) data$id
 computation.data <- function(data) data$comp
-value.data <- function(data) emerge(identifier(data))
+value.data <- function(data) value(identifier(data))
 
 is.data <- function(data) inherits(data, "data")
 
-format.data <- function(data) {
-	as.character(c(underline("Data", '='),
-		       underline("Value:", '-'),
-		       with.spacing(capture.output(str(value(data)))),
-		       underline("Computation Identifier:", '-'),
-		       with.spacing(format(computationid(data))),
-		       underline("Identifier:", '-'),
-		       with.spacing(format(identifier(data)))))
+format.data <- function(data, ...) c("<Data", format(identifier(data)), ">")
+print.data <- function(data, ...) cat(format(data), "\n")
+str.data <- function(data, ...) {
+	cat("Data:\n")
+	strfields(data, 
+		  "Identifier", identifier,
+		  "Computation Identifier", computation)
 }
-print.data <- function(data) {
-	with.comment(cat(format(data), sep="\n"))
-}
-str.data <- function(data) cat("Data: ", str(identifier(data)))
 
 fixedData <- function(id, computation, value) {
 	d <- data(id, computation)
@@ -32,21 +27,25 @@ fixedData <- function(id, computation, value) {
 value.fixedData <- function(data) data$val
 `value<-.fixedData` <- function(x, value) {x$val <- value; x}
 
+value.default <- identity
+
+str.fixedData <- function(fd, ...) {
+	strfields(fd, "Value", value)
+	NextMethod()
+}
+
 do.computation <- function(comp) {
 	store(comp)
-	input <- input(comp)
-	input[sapply(input, is.identifier)] <- value(input[sapply(input, is.identifier)])
+	input <- lapply(input(comp), value)
 	data <- fixedData(id=output(comp),
-			  computation=comp,
+			  computation=identifier(comp),
 			  value=tryCatch(do.call(value(comp), input),
 					 error=identity))
 	store(data)
 }
 do.function <- function(fun, input) {
 	comp <- computation(fun=fun,
-			    input=input,
-			    id=genid(),
-			    output=genid())
-	request(comp)
-	data(id=output(comp), computation=id(comp))
+			    input=input)
+	send(comp)
+	data(id=output(comp), computation=identifier(comp))
 }

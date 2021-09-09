@@ -2,37 +2,47 @@
 
 library(largerscale)
 
-(vdata <- read.hdfs("/some/file/path"))
+(dfdata <- read.hdfs("/some/file/path"))
+str(dfdata)
 
 "REMOTE MACHINE:"
 
-(vcomp <- receive())
-(do(vcomp))
+(computationpool())
+(dfcomp <- receive())
+
+str(dfcomp)
+(computationpool())
+
+(do(dfcomp))
+
 (datapool())
+str(datapool())
 
 "LOCAL MACHINE:"
 
-(v <- value(vdata))
-tdata <- do(t.test, v)
+str(df <- value(dfdata))
+(lmdata <- do(lm, list(y ~ x, data=df)))
 
 "REMOTE MACHINE:"
 
-(tcomp <- receive())
-(do(tcomp))
-(datapool())
+(lmcomp <- receive())
+(do(lmcomp))
+str(datapool())
 
 "LOCAL MACHINE:"
 
-sdata <- do(summary, tdata)
+(sdata <- do(summary, lmdata))
 
 "REMOTE MACHINE:"
 
 (scomp <- receive())
 (do(scomp))
-(datapool())
+str(datapool())
 
 "LOCAL MACHINE:"
 
-(s <- value(sdata))
+s <- value(sdata)
+s[1] <- NULL # get rid of call capture !!
+print(s)
 
 # graph(sdata)
