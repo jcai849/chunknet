@@ -45,4 +45,13 @@ s <- value(sdata)
 s[1] <- NULL # get rid of call capture !!
 print(s)
 
-# graph(sdata)
+(cdata <- do(coef, sdata))
+
+"REMOTE MACHINE:"
+
+(ccomp <- receive())
+(do(ccomp))
+
+"LOCAL MACHINE:"
+
+graph(cdata)
