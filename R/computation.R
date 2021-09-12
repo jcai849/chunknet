@@ -13,7 +13,7 @@ output.computation <- function(comp) comp$output
 is.computation <- function(comp) inherits(comp, "computation")
 
 format.computation <- function(comp, ...) {
-	c("<Computation", format(identifier(comp)), ">")
+	c("Computation", format(identifier(comp)))
 }
 print.computation <- function(comp, ...) cat(format(comp), "\n")
 str.computation <- function(comp, ...) {

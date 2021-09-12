@@ -54,4 +54,4 @@ print(s)
 
 "LOCAL MACHINE:"
 
-graph(cdata)
+dependencygraph(cdata)

@@ -9,7 +9,7 @@ value.data <- function(data) value(identifier(data))
 
 is.data <- function(data) inherits(data, "data")
 
-format.data <- function(data, ...) c("<Data", format(identifier(data)), ">")
+format.data <- function(data, ...) c("Data", format(identifier(data)))
 print.data <- function(data, ...) cat(format(data), "\n")
 str.data <- function(data, ...) {
 	cat("Data:\n")
