@@ -1,0 +1,129 @@
+---
+title: "Introduction to largerscale objects"
+author: "Jason Cairns"
+date: "2021-09-13"
+output: html_document
+---
+
+## Introduction
+
+This is a brief demonstration of the main actore used in the largerscale system, with emphasis on their structure and use.
+The motivation behind these is given in other documents.
+This demonstration emulates two machines; one local to the user, and one remote worker session.
+
+### LOCAL MACHINE
+
+The largerscale library is initiated and data is read in from (imaginary) HDFS.
+The `read.hdfs()` function produces a computation object internally, and sends it to the remote worker, which operates based on the computation, creating some remote data output (shown in the next section).
+The function returns a data object locally that operates as a proxy to the remote data.
+
+```{r}
+library(largerscale)
+
+dfdata <- read.hdfs("/some/file/path")
+str(dfdata)
+```
+
+### REMOTE MACHINE
+
+The remote machine has a new computation added to it's computation pool, which may serve as a more general work queue.
+It `receive()`s the computation from the pool, and then performs the computation, which produces a fixed data object.
+Note that the fixed data object has a value.
+The computation and the data object are added to the remote machine's datapool.
+
+```{r}
+(computationpool())
+(dfcomp <- receive())
+
+str(dfcomp)
+(computationpool())
+
+str(do(dfcomp))
+
+(datapool())
+str(datapool())
+```
+
+### LOCAL MACHINE
+
+Concurrently at the local machine, the `value` of the data may be requested.
+From the data `identifier`, it is located, and the remote machine sends it directly.
+Here it is available immediately, but it could very well block or respond with non-availability if it is still being processed.
+In this case, what was "read" from HDFS is a data frame, as shown in the `str()` result
+A linear model is requested to be fit on this data, using the `data` object and a formula.
+
+
+```{r}
+str(df <- value(dfdata))
+(lmdata <- do(lm, list(y ~ x, data=dfdata)))
+```
+
+### REMOTE MACHINE
+
+Again, the remote machine `receive()`s the computation, `do()`es it, and adds the results to the datapool.
+
+```{r}
+(lmcomp <- receive())
+str(do(lmcomp))
+(datapool())
+```
+
+### LOCAL MACHINE
+
+A summary is run on the result, without waiting for any value to be returned.
+
+```{r}
+(sdata <- do(summary, lmdata))
+```
+
+### REMOTE MACHINE
+
+As before - this is a loop that would run continuously
+
+```{r}
+(scomp <- receive())
+(do(scomp))
+(datapool())
+```
+
+### LOCAL MACHINE
+
+The value of the summary is requested.
+The call capture issue, as given in another document, rears it's head, but is `NULL`ed here for simplicity.
+The `coef()`ficients of the summary are requested.
+
+```{r}
+s <- value(sdata)
+s[1] <- NULL # get rid of call capture !!
+(s)
+
+(cdata <- do(coef, sdata))
+```
+
+### REMOTE MACHINE
+
+The remote machine repeats the evaluation loop
+
+```{r}
+(ccomp <- receive())
+(do(ccomp))
+```
+
+### LOCAL MACHINE
+
+Given that all of the computations and data keep track of the identifiers of their dependencies, an abstract dependency graph exists.
+This graph does not (and should not) exist literally, but in the case of machine failure, with replication of the computation objects and some data objects, the data can be recreated.
+Here we compile the abstract dependency graph to DOT notation.
+
+```{r}
+dependencygraph(cdata)
+```
+
+And display it visually with graphviz
+
+```{r}
+gpath <- tempfile(fileext=".svg")
+g <- pipe(paste0("dot -Tsvg >", gpath))
+capture.output(dependencygraph(cdata), file=g)
+knitr::include_graphics(gpath)
+```

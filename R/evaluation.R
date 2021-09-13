@@ -30,8 +30,10 @@ value.fixedData <- function(data) data$val
 value.default <- identity
 
 str.fixedData <- function(fd, ...) {
-	strfields(fd, "Value", value)
-	NextMethod()
+	strfields(fd, 
+		  "Identifier", identifier,
+		  "Value", value,
+		  "Computation", computation)
 }
 
 do.computation <- function(comp) {
