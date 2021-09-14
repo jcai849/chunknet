@@ -39,9 +39,6 @@ graph.computation <- function(comp) {
 	mapply(arc,
 	       input(comp),
 	       rep(list(comp), length(input(comp))))
-	lapply(input(comp),
-	       function(i) if (is.data(i))
-		       arc(emerge(computation(i)), comp))
 	invisible(lapply(input(comp), graph))
 }
 graph.default <- function(...) invisible(NULL)
