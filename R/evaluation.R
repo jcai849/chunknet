@@ -36,14 +36,24 @@ str.fixedData <- function(fd, ...) {
 		  "Computation", computation)
 }
 
+regularise.list <- function(x) {
+	asis <- sapply(x, is.AsIs)
+	if (length(x) && !all(asis))
+		x[!asis] <- lapply(x[!asis], value)
+	if (length(x) && any(asis))
+		x[asis] <- lapply(x[asis], un.AsIs)
+	x
+}
 do.computation <- function(comp) {
-	store(comp)
-	input <- lapply(input(comp), value)
-	data <- fixedData(id=output(comp),
-			  computation=identifier(comp),
-			  value=tryCatch(do.call(value(comp), input),
-					 error=identity))
-	store(data)
+	if (!is.null(identifier(comp))) store(comp)
+	input <- regularise(input(comp))
+	val <- tryCatch(do.call(value(comp), input),
+			error=identity)
+	if (!is.null(output(comp)))
+		store(fixedData(id=output(comp),
+				computation=identifier(comp),
+				value=val))
+	val
 }
 do.function <- function(fun, input) {
 	comp <- computation(fun=fun,

@@ -24,6 +24,12 @@ store.data <- store.computation <- datapool.computation <- datapool.data <-
 	function(data) {
 		assign(identifier(data), data, datapool())
 	}
+unstore.data <- function(data) {
+	unstore(identifier(data))
+}
+unstore.identifier <- function(id) {
+	rm(list=id, envir=datapool())
+}
 send.computation <- computationpool.computation <- function(comp) {
 	assign(identifier(comp), comp, computationpool())
 }

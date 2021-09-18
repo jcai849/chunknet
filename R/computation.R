@@ -1,8 +1,10 @@
-computation.function <- function(fun, input, ...) {
-	structure(list(id=identifier(),
+computation.function <- function(fun, input, id, output, ...) {
+	id <- if (missing(id)) identifier() else id
+	output <- if (missing(output)) identifier() else output
+	structure(list(id=id,
 		       input=if (!inherits(input, "list"))  list(input) else input,
 		       val=fun,
-		       output=identifier()),
+		       output=output),
 		  class="computation")
 }
 value.computation <- function(comp) comp$val

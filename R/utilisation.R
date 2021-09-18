@@ -23,3 +23,5 @@ strfields <- function(x, ...) {
 	}
 	cat()
 }
+is.AsIs <- function(x) inherits(x, "AsIs")
+un.AsIs <- function(x) structure(x, class=class(x)[class(x) != "AsIs"])
