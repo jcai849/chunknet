@@ -2,7 +2,7 @@ source("general.R", local=T, echo=T)
 
 "REMOTE"
 
-computationpool()
+computationqueue()
 datapool()
 unstore(cdata)
 datapool()
@@ -13,9 +13,9 @@ tryCatch(value(cdata), error=identity)
 
 "REMOTE"
 
-str(computationpool())
+str(computationqueue())
 do(receive())
-computationpool()
+computationqueue()
 datapool()
 
 "LOCAL"

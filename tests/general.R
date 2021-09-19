@@ -6,11 +6,11 @@ str(dfdata)
 
 
 ## Remote ----------------------------------------------------------------------
-(computationpool())
+(computationqueue())
 (dfcomp <- receive())
 
 str(dfcomp)
-(computationpool())
+(computationqueue())
 
 str(do(dfcomp))
 

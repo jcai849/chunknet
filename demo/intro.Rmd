@@ -32,11 +32,11 @@ Note that the fixed data object has a value.
 The computation and the data object are added to the remote machine's datapool.
 
 ```{r}
-(computationpool())
+(computationqueue())
 (dfcomp <- receive())
 
 str(dfcomp)
-(computationpool())
+(computationqueue())
 
 str(do(dfcomp))
 

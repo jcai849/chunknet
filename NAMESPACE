@@ -1,6 +1,10 @@
+importFrom("queue", "queue")
+importFrom("queue", "dequeue")
+importFrom("queue", "enqueue")
+
 export("arc")
 export("computation")
-export("computationpool")
+export("computationqueue")
 export("data")
 export("datapool")
 export("datapool")

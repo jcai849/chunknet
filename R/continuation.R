@@ -9,14 +9,13 @@ pool <- function(name) {
 		function(x, ...) if (missing(x)) pool else UseMethod(name)
 	})
 }
-computationpool <- pool("computationPool")
 datapool <- pool("dataPool")
 format.pool <- function(dp, ...) {
-	c("<Pool:", length(dp), "Items>")
+	c("Pool:", length(dp), "Items")
 }
 print.pool <- function(dp, ...) cat(format(dp), "\n")
 str.pool <- function(dp, ...) {
-	cat("pool: ", length(dp), " Items\n")
+	print(dp)
 	cat(with.spacing(capture.output(ls.str(envir=dp))), sep="\n")
 }
 
@@ -30,12 +29,14 @@ unstore.data <- function(data) {
 unstore.identifier <- function(id) {
 	rm(list=id, envir=datapool())
 }
-send.computation <- computationpool.computation <- function(comp) {
-	assign(identifier(comp), comp, computationpool())
+
+computationqueue <- local({
+	cq <- queue()
+	function(x, ...) if (missing(x)) cq else UseMethod("computationqueue")
+})
+send.computation <-  function(comp) {
+	enqueue(computationqueue(), comp)
 }
 receive <- function() {
-	topop <- ls(computationpool())[1]
-	popped <- get(topop, computationpool())
-	rm(list=topop, envir=computationpool())
-	popped
+	dequeue(computationqueue())
 }
