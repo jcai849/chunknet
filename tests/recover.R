@@ -9,9 +9,7 @@ datapool()
 
 "LOCAL"
 
-value(cdata)
-
-recover(cdata)
+tryCatch(value(cdata), error=identity)
 
 "REMOTE"
 
