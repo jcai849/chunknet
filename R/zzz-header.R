@@ -11,6 +11,7 @@ identifier <- function(x, ...) if (missing(x)) identifier(6L) else UseMethod("id
 input <- function(x, ...) UseMethod("input")
 key <- function(x, ...) UseMethod("key")
 locate <- function(x, ...) UseMethod("locate")
+lost <- function(x, ...) UseMethod("lost")
 output <- function(x, ...) UseMethod("output")
 port <- function(x, ...) UseMethod("port")
 recover <- function(x, ...) UseMethod("recover")

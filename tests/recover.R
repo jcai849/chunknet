@@ -9,7 +9,7 @@ datapool()
 
 "LOCAL"
 
-"value(cdata) -> ERROR!"
+value(cdata)
 
 recover(cdata)
 

@@ -5,7 +5,14 @@ data.identifier <- function(id, computation) {
 }
 identifier.data <- function(data) data$id
 computation.data <- function(data) data$comp
-value.data <- function(data) value(identifier(data))
+value.data <- function(data) {
+	if (!lost(data)) {
+		value(identifier(data))
+	} else {
+		recover(data)
+		stop("Data lost. Recovering...")
+	}
+}
 
 is.data <- function(data) inherits(data, "data")
 
