@@ -1,4 +1,4 @@
-source("general.R", local=T, echo=T)
+source("general.R", local=T)
 
 "REMOTE"
 
@@ -20,4 +20,27 @@ datapool()
 
 "LOCAL"
 
-value(cdata)
+tryCatch(value(cdata), error=identity)
+
+"REMOTE"
+
+unstore(cdata)
+unstore(sdata)
+unstore(lmdata)
+unstore(dfdata)
+datapool()
+
+"LOCAL"
+
+tryCatch(value(cdata), error=identity)
+
+"REMOTE"
+
+while(!is.null(r <- receive())) {
+	print(computationqueue())
+	callCC(function(k) do(r, k))
+}
+
+"LOCAL"
+
+tryCatch(value(cdata), error=identity)

@@ -43,17 +43,21 @@ str.fixedData <- function(fd, ...) {
 		  "Computation", computation)
 }
 
-regularise.list <- function(x) {
+regulariseinput <- function(comp, continuation) {
+	x <- input(comp)
 	asis <- sapply(x, is.AsIs)
 	if (length(x) && !all(asis))
-		x[!asis] <- lapply(x[!asis], value)
+		x[!asis] <- tryCatch(lapply(x[!asis], value),
+				     error=function(e) {
+					     send(comp)
+					     continuation(e)})
 	if (length(x) && any(asis))
 		x[asis] <- lapply(x[asis], un.AsIs)
 	x
 }
-do.computation <- function(comp) {
+do.computation <- function(comp, continuation=stop) {
 	if (!is.null(identifier(comp))) store(comp)
-	input <- regularise(input(comp))
+	input <- regulariseinput(comp, continuation)
 	val <- tryCatch(do.call(value(comp), input),
 			error=identity)
 	if (!is.null(output(comp)))

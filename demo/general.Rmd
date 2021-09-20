@@ -7,7 +7,7 @@ output: html_document
 
 ## Introduction
 
-This is a brief demonstration of the main actore used in the largerscale system, with emphasis on their structure and use.
+This is a brief demonstration of the main actors used in the largerscale system, with emphasis on their structure and use.
 The motivation behind these is given in other documents.
 This demonstration emulates two machines; one local to the user, and one remote worker session.
 
@@ -17,7 +17,7 @@ The largerscale library is initiated and data is read in from (imaginary) HDFS.
 The `read.hdfs()` function produces a computation object internally, and sends it to the remote worker, which operates based on the computation, creating some remote data output (shown in the next section).
 The function returns a data object locally that operates as a proxy to the remote data.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(largerscale)
 
 dfdata <- read.hdfs("/some/file/path")
@@ -64,7 +64,7 @@ Again, the remote machine `receive()`s the computation, `do()`es it, and adds th
 
 ```{r}
 (lmcomp <- receive())
-str(do(lmcomp))
+invisible(do(lmcomp))
 (datapool())
 ```
 
@@ -80,9 +80,9 @@ A summary is run on the result, without waiting for any value to be returned.
 
 As before - this is a loop that would run continuously
 
-```{r}
+```{r, warning=FALSE}
 (scomp <- receive())
-(do(scomp))
+invisible(do(scomp))
 (datapool())
 ```
 

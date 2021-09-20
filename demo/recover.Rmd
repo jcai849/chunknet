@@ -1,0 +1,99 @@
+---
+title: "Self-healing Data in Largerscale"
+author: "Jason Cairns"
+date: "2021-09-20"
+output: html_document
+---
+
+## Introduction
+
+```{r, include=FALSE}
+source("../tests/general.R")
+```
+
+This demonstration continues on from the previous "general" demonstration.
+Here, self-healing of missing data is performed
+
+### REMOTE MACHINE
+
+From the previous demonstration, a remote dataframe was initially generated.
+From this dataframe and a formula, a linear model was fit.
+A summary was derived from the linear model, and from the summary, coefficients were extracted.
+The variables made use of were `cdata`, `sdata`, `lmdata`, and `dfdata`.
+`cfdata` depended on `sdata`, which depended on `lmdata`, depending on `dfdata` in turn.
+Let's remove the fixed value for `cdata`, which is equivalent to removing the machine storing `cdata`.
+
+```{r}
+computationqueue()
+datapool()
+unstore(cdata)
+datapool()
+```
+
+### LOCAL MACHINE
+
+Upon `cdata` being removed, an error is thrown if access is attempted, and a recovery signal is sent.
+
+```{r}
+tryCatch(value(cdata), error=identity)
+```
+
+### REMOTE MACHINE
+
+A remote machine storing the computation resulting in `cdata` performs the recovery.
+
+```{r}
+str(computationqueue())
+do(receive())
+computationqueue()
+datapool()
+```
+
+### LOCAL MACHINE
+
+And `cdata` is now accessible again.
+
+```{r}
+tryCatch(value(cdata), error=identity)
+```
+
+### REMOTE MACHINE
+
+If the entire chain of dependencies is deleted, recovery is still possible, as long as there is some self-sufficient computation, equivalent to checkpointing.
+Here, the initial computation leading to `dfdata` has no dependencies, so it is able to regenerate `dfdata` as well as the chain.
+
+```{r}
+unstore(cdata)
+unstore(sdata)
+unstore(lmdata)
+unstore(dfdata)
+datapool()
+```
+
+### LOCAL MACHINE
+
+An error occurs if trying to access the now-deleted data
+
+```{r}
+tryCatch(value(cdata), error=identity)
+```
+
+### REMOTE MACHINE
+
+And the regeneration process takes place, making use of continuations to return control in the case of missing dependencies.
+Note that the choice of queue as data structure is exceedingly inefficient; a stack will be used in place next week, with only $O(n)$ operations required for recovery.
+
+```{r, warning=FALSE}
+while(!is.null(r <- receive())) {
+	        print(computationqueue())
+        callCC(function(k) do(r, k))
+}
+```
+
+### LOCAL MACHINE
+
+After recovery, the value is available again.
+
+```{r}
+tryCatch(value(cdata), error=identity)
+```
