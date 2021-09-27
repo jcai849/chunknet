@@ -1,8 +1,3 @@
-pool <- function() {
-	structure(new.env(),
-		  class="datapool")
-
-}
 pool <- function(name) {
 	local({
 		pool <- structure(new.env(), class=c(name, "pool"))
@@ -10,6 +5,7 @@ pool <- function(name) {
 	})
 }
 datapool <- pool("dataPool")
+workerpool <- pool("workerPool")
 format.pool <- function(dp, ...) {
 	c("Pool:", length(dp), "Items")
 }
@@ -28,15 +24,4 @@ unstore.data <- function(data) {
 }
 unstore.identifier <- function(id) {
 	rm(list=id, envir=datapool())
-}
-
-computationqueue <- local({
-	cq <- queue()
-	function(x, ...) if (missing(x)) cq else UseMethod("computationqueue")
-})
-send.computation <-  function(comp) {
-	enqueue(computationqueue(), comp)
-}
-receive <- function() {
-	dequeue(computationqueue())
 }

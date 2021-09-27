@@ -1,21 +1,21 @@
-location <- function(address, port) {
-	stopifnot(is.character(address),
+location <- function(host, port) {
+	stopifnot(is.character(host),
 		  is.integer(port))
-	structure(list(address=address, port=port),
+	structure(list(host=host, port=port),
 		  class="location")
 }
-address.location <- function(loc) loc$address
+host.location <- function(loc) loc$host
 port.location <- function(loc) loc$port
 
 is.location <- function(loc) inherits(loc, "location")
 
 format.location <- function(loc, ...) 
-	c("Location", format(address(loc)),  format(port(loc)))
+	c("Location", format(host(loc)),  format(port(loc)))
 print.location <- function(loc, ...) cat(format(loc), "\n")
 str.location <- function(loc, ...) {
 	cat("Location:\n")
 	strfields(loc,
-		  "Address", address,
+		  "host", host,
 		  "Port", port)
 }
 

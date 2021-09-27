@@ -1,10 +1,14 @@
-importFrom("queue", "queue")
-importFrom("queue", "dequeue")
-importFrom("queue", "enqueue")
+importFrom("deque", "deque")
+importFrom("deque", "shift")
+importFrom("deque", "push")
+importFrom("deque", "unshift")
+
+export("send")
+S3method("send", "default")
+export("receive")
 
 export("arc")
 export("computation")
-export("computationqueue")
 export("data")
 export("datapool")
 export("datapool")

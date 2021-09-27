@@ -1,6 +1,6 @@
-LOCATION <- location(address="localhost", port=1234L)
+LOCATION <- location(host="localhost", port=1234L)
 
-address <- function(x, ...) UseMethod("address")
+host <- function(x, ...) UseMethod("host")
 arc <- function(x, ...) UseMethod("arc")
 computation <- function(x, ...) UseMethod("computation")
 data <- function(x, ...) UseMethod("data")

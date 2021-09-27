@@ -1,5 +1,5 @@
 recover.data <- function(x) {
-	send(computation(do, input=list(I(emerge(computation(x)))), output=NULL))
+	unshift(computationqueue(), computation(do, input=list(I(emerge(computation(x)))), output=NULL))
 	x
 }
 lost.data <- function(x) {
