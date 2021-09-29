@@ -1,8 +1,3 @@
-importFrom("deque", "deque")
-importFrom("deque", "shift")
-importFrom("deque", "push")
-importFrom("deque", "unshift")
-
 export("send")
 S3method("send", "default")
 export("receive")
