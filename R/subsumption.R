@@ -19,7 +19,7 @@ run_store <- function() {
 }
 
 respond.computation <- function(message, respond_do, data_store) {
-	
+	tryCatch(do.call(value(comp), input), error=identity)
 }
 
 respond.data <- function() {
