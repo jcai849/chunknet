@@ -11,15 +11,23 @@ run_store <- function() {
 	repeat {
 		to_read <- poll(listeners, poll_method, timeout=-1L)
 		messages <- lapply(listeners[unlist(to_read)], receive.socket)
-		data_store <- mapply(respond,
-				     messages,
-				     listeners[unlist(to_read)],
-				     data_store)
+		for (i in length(messages)) {
+			data_store <- respond(messages[[i]],
+					      listeners[unlist(to_read)][[i]],
+					      data_store)
+		}
 	}
 }
 
-respond.computation <- function(message, respond_do, data_store) {
-	tryCatch(do.call(value(comp), input), error=identity)
+respond.computation <- function(message, respond_to, data_store) {
+	store(message, data_store)
+	store(chunk(message), data_store)
+	respond(respond_to)
+	if (all(available(prereqs(message)))) {
+		mcparallel(dofunction..., detached=T)
+	}
+	# else set callbacks etc.
+	data_store
 }
 
 respond.data <- function() {
