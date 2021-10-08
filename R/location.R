@@ -37,3 +37,25 @@ node_graph <- function(identifier, node) {
 	}
 
 c.NodeGraph <- function(...) rbind(...)
+
+location <- function(host, port) {
+	stopifnot(is.character(host),
+		  is.integer(port))
+	structure(list(host=host, port=port),
+		  class="location")
+}
+host.location <- function(loc) loc$host
+port.location <- function(loc) loc$port
+
+is.location <- function(loc) inherits(loc, "location")
+
+format.location <- function(loc, ...) 
+		c("Location", format(host(loc)),  format(port(loc)))
+print.location <- function(loc, ...) cat(format(loc), "\n")
+
+locate.location <- function(location) {
+}
+locate.identifier <- function(id) {
+}
+locate.chunk <- locate.data <- locate.computation <- function(data) {
+}
