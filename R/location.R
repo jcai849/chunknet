@@ -32,8 +32,8 @@ node_graph <- function(identifier, node) {
 	if (missing(identifier) && missing(node)) {
 		structure(data.frame(identifier=NULL, node=NULL))
 	} else {
-	structure(data.frame(identifier=identifier, node=node),
-		  class="NodeGraph")
+		structure(data.frame(identifier=identifier, node=node),
+			  class="NodeGraph")
 	}
 
 c.NodeGraph <- function(...) rbind(...)
