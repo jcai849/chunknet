@@ -1,6 +1,6 @@
 location_service <- function(host, parent_address) {
 	HOST(host)
-	resume_parent(parent_address)
+	if (!missing(parent_address)) resume_parent(parent_address)
 	run_locator()
 }
 
@@ -22,7 +22,7 @@ respond.identifier <- function(identifier, full_node_graph) {
 	send.socket(REPLIER(), response)
 	full_node_graph
 }
-respond.location <- function(identifier, full_node_graph) {
+respond.Location <- function(identifier, full_node_graph) {
 	updated_node_graph <- c(full_node_graph, node_graph(identifier=NA, node=location))
 	send.socket(REPLIER(), get.last.endpoint(SUBSCRIBER()))
 	updated_node_graph
@@ -35,27 +35,29 @@ node_graph <- function(identifier, node) {
 		structure(data.frame(identifier=identifier, node=node),
 			  class="NodeGraph")
 	}
+}
 
 c.NodeGraph <- function(...) rbind(...)
 
-location <- function(host, port) {
+Location <- function(host, port) {
 	stopifnot(is.character(host),
 		  is.integer(port))
 	structure(list(host=host, port=port),
-		  class="location")
+		  class="Location")
 }
-host.location <- function(loc) loc$host
-port.location <- function(loc) loc$port
+host.Location <- function(loc) loc$host
+port.Location <- function(loc) loc$port
 
-is.location <- function(loc) inherits(loc, "location")
+is.Location <- function(loc) inherits(loc, "Location")
 
-format.location <- function(loc, ...) 
+format.Location <- function(loc, ...) 
 		c("Location", format(host(loc)),  format(port(loc)))
-print.location <- function(loc, ...) cat(format(loc), "\n")
+print.Location <- function(loc, ...) cat(format(loc), "\n")
 
-locate.location <- function(location) {
+locate <- function(x, ...) UseMethod("locate")
+locate.Location <- function(location, ...) {
 }
-locate.identifier <- function(id) {
+locate.identifier <- function(id, ...) {
 }
-locate.chunk <- locate.data <- locate.computation <- function(data) {
+locate.chunk <- locate.data <- locate.computation <- function(data, ...) {
 }

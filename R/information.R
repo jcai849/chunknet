@@ -1,4 +1,4 @@
-chunk.identifier <- function(id, computation) {
+chunk.Identifier <- function(id, computation) {
 	stopifnot(is.identifier(computation),
 		  is.identifier(id))
 	structure(list(comp=computation, id=id), class="Chunk")
@@ -9,7 +9,7 @@ is.Chunk <- function(chunk) inherits(chunk, "Chunk")
 format.Chunk <- function(chunk, ...) c("Chunk", format(identifier(chunk)))
 print.Chunk <- function(chunk, ...) cat(format(chunk), "\n")
 
-data <- function(id, computation, value) {
+Data <- function(id, computation, value) {
 	data <- chunk(id, computation)
 	class(data) <- c("Data", class(d))
 	value(data) <- value
@@ -18,7 +18,7 @@ data <- function(id, computation, value) {
 value.Data <- function(data) data$val
 `value<-.Data` <- function(x, value) {x$val <- value; x}
 
-computation.function <- function(fun, input, id, output, ...) {
+Computation.function <- function(fun, input, id, output, ...) {
 	id <- if (missing(id)) identifier() else id
 	output <- if (missing(output)) identifier() else output
 	structure(list(id=id,

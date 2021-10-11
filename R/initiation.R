@@ -1,33 +1,26 @@
-spawn_service <- function(generate_service_initialisation_command) {
+spawn_location_service <- function(host) {
 	synchronizer <- init.socket(CONTEXT(), "ZMQ_REP")
 	bind.socket(synchronizer, paste0("tcp://", HOST(), ":0"))
-	system2("ssh", host, shQuote(paste("R", "-e",
-		   generate_service_initialisation_command(host, synchronizer))))
+	startcommand <- shQuote(deparse1(bquote(
+						largerscale::location_service(.(host),
+						      .(get.last.endpoint(synchronizer))))))
+	system2("ssh", shQuote(c(host, "R", "-e", startcommand)))
 	message <- receive.socket(synchronizer)
-	send.socket(socket, "ACK")
+	send.socket(synchronizer, "ACK")
+	LOCATION_SERVICE(message)
+}
+
+spawn_store <- function(host) {
+	synchronizer <- init.socket(CONTEXT(), "ZMQ_REP")
+	bind.socket(synchronizer, paste0("tcp://", HOST(), ":0"))
+	startcommand <- shQuote(deparse1(bquote(
+						 largerscale::child_store(host=.(host),
+									  parent_address=.(get.last.endpoint(synchronizer)),
+									  location_service=.(LOCATION_SERVICE())))))
+	system2("ssh", shQuote(c(host, "R", "-e", startcommand)))
+	message <- receive.socket(synchronizer)
+	send.socket(synchronizer, "ACK")
 	message
-}
-alter_body <- function(alter) {
-	function(f) {
-		body(f) <- alter(body(f))
-		f
-	}
-}
-backquoted_body <- alter_body(bquote)
-deparsed_body <- alter_body(deparse1)
-spawn_location_service <- function(host) {
-	generate_location_service_command <- function(host, synchronizer) {
-		largerscale::location_service(host=.(host),
-		      parent_address=.(get.last.endpoint(synchronizer)))
-	}
-	location_service_address <-
-		spawn_service(deparsed_body(backquoted_body(generate_location_service_command)))()
-	LOCATION_SERVICE(location_service_address)
-}
-spawn_store <- spawn_service(deparsed_body(backquoted_body(function(host, synchronizer) {
-	largerscale::child_store(host=.(host),
-		 parent_address=.(get.last.endpoint(synchronizer)),
-		 location_service=.(LOCATION_SERVICE())))))
 }
 
 resume_parent <- function(parent_address) {
