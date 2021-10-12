@@ -1,74 +1,36 @@
-spawn_location_service <- function(host) {
-	synchronizer <- init.socket(CONTEXT(), "ZMQ_REP")
-	bind.socket(synchronizer, paste0("tcp://", HOST(), ":0"))
-	startcommand <- shQuote(deparse1(bquote(
-						largerscale::location_service(.(host),
-						      .(get.last.endpoint(synchronizer))))))
-	system2("ssh", shQuote(c(host, "R", "-e", startcommand)))
+spawn <- function(host, location_service=FALSE ) {
+	context <- init.context()
+	synchronizer <- init.socket(context, "ZMQ_REP")
+	bind.socket(synchronizer, as.character(Location(HOSTNAME(), 0L)))
+	summon <- as.call(c(alist(largerscale::service),
+			    list(host=host,
+				 initiator=Location(synchronizer)),
+			    if (!location_service) {
+				    list(location_service=LOCATION_SERVICE())
+			    } else NULL))
+	system2("ssh", shQuote(shQuote(c(host, "R", "-e", deparse1(summon)))))
 	message <- receive.socket(synchronizer)
-	send.socket(synchronizer, "ACK")
-	LOCATION_SERVICE(message)
-}
-
-spawn_store <- function(host) {
-	synchronizer <- init.socket(CONTEXT(), "ZMQ_REP")
-	bind.socket(synchronizer, paste0("tcp://", HOST(), ":0"))
-	startcommand <- shQuote(deparse1(bquote(
-						 largerscale::child_store(host=.(host),
-									  parent_address=.(get.last.endpoint(synchronizer)),
-									  location_service=.(LOCATION_SERVICE())))))
-	system2("ssh", shQuote(c(host, "R", "-e", startcommand)))
-	message <- receive.socket(synchronizer)
-	send.socket(synchronizer, "ACK")
+	send.socket(synchronizer, NULL)
 	message
 }
 
-resume_parent <- function(parent_address) {
-	requester <- init.socket(CONTEXT(), "ZMQ_REQ")
-	connect.socket(requester, parent_address)
-	send.socket(requester, get.last.endpoint(REPLIER()))
-	receive.socket(requester)
-	disconnect.socket(requester, parent_address)
-}
-announce_address <- function(location_service) {
-	LOCATION_SERVICE(location_service)
-	requester <- init.socket(CONTEXT(), "ZMQ_REQ")
-	connect.socket(requester, LOCATION_SERVICE())
-	send.socket(requester, get.last.endpoint(REPLIER()))
-	subscribe_to <- receive.socket(requester)
-	connect.socket(SUBSCRIBER(), subscribe_to)
-	disconnect.socket(requester, LOCATION_SERVICE())
+service <- function(host, location, ...) {
+	HOSTNAME(host)
+	REPLIER()
+	lapply(list(...), notify, replier)
+	identifier_table <- if (missing(location)) IdentifierTable() else
+		IdentifierTable("Locations", location)
+	process(replier, identifier_table)
 }
 
-set_sticky_value <- function() {
-	value <- NULL
-	function(set) {
-		if (!missing(set)) value <<- set
-		value
-	}
+notify <- function(location, replier) {
+	stopifnot(is.Location(location))
+
+	context <- init.context()
+	requester <- init.socket(context, "ZMQ_REQ")
+	connect.socket(requester, as.character(location))
+	send.socket(requester, Location(replier))
+	message <- receive.socket(requester)
+	disconnect.socket(requester, initiator_address)
+	message
 }
-HOST <- set_sticky_value()
-LOCATION_SERVICE <- set_sticky_value()
-initialise_sticky_value <- function(initialisation) {
-	value <- NULL
-	function() {
-		if (is.null(value)) value <<- initialisation()
-		value
-	}
-}
-CONTEXT <- initialise_sticky_value(init.context)
-SUBSCRIBER <- initialise_sticky_value(function() {
-			SUBSCRIBER <<- init.socket(CONTEXT(), "ZMQ_SUB")
-			subscribe(subscriber, '')
-			SUBSCRIBER
-})
-initialise_sticky_communicator <- function(SOCK_TYPE) {
-	binder_initialisation <- function() {
-		replier <- init.socket(CONTEXT(), SOCK_TYPE)
-		bind.socket(replier, paste0("tcp://", HOST(), ":0"))
-		replier
-	}
-	initialise_sticky_value(binder_initialisation)
-}
-REPLIER <- initialise_sticky_communicator("ZMQ_REP")
-PUBLISHER <- initialise_sticky_communicator("ZMQ_PUB")
