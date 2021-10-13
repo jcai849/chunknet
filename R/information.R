@@ -1,44 +1,45 @@
-chunk.Identifier <- function(id, computation) {
-	stopifnot(is.identifier(computation),
-		  is.identifier(id))
-	structure(list(comp=computation, id=id), class="Chunk")
-}
-identifier.Chunk <- function(chunk) chunk$id
-computation.Chunk <- function(chunk) chunk$comp
-is.Chunk <- function(chunk) inherits(chunk, "Chunk")
-format.Chunk <- function(chunk, ...) c("Chunk", format(identifier(chunk)))
-print.Chunk <- function(chunk, ...) cat(format(chunk), "\n")
-
-Data <- function(id, computation, value) {
-	data <- chunk(id, computation)
-	class(data) <- c("Data", class(d))
-	value(data) <- value
+data <- function(identifier, input) {
+	# input is identifier for generating computation if derived from some
+	# computation, but the raw data itself otherwise
+	stopifnot(is.Identifier(identifier))
+	data <- list(input=input, identifier=identifier)
+	class(data) <- c("Data", class(data))
 	data
 }
-value.Data <- function(data) data$val
-`value<-.Data` <- function(x, value) {x$val <- value; x}
+is.Data <- function(data) inherits(data, "Data")
+identifier.Data <- function(x) x$identifier
+input.Data <- function(x, ...) x$input
+format.Data <- function(x, ...) c(format(identifier(x)),
+				  format(input(x)))
+print.Data <- function(x, ...) cat("Data:", format(x), "\n")
 
-Computation.function <- function(fun, input, id, output, ...) {
-	id <- if (missing(id)) identifier() else id
-	output <- if (missing(output)) identifier() else output
-	structure(list(id=id,
-		       input=if (!inherits(input, "list"))  list(input) else input,
-		       val=fun,
-		       output=output),
-		  class="Computation")
+computation <- function(identifier, input, value, output) {
+	stopifnot(is.Identifier(identifier),
+		  is.list(input), sapply(input, is.Data),
+		  is.function(value),
+		  is.Identifier(output))
+	computation <- structure(list(identifier=identifier, input=input,
+				      value=value, output=output))
+	class(computation) <- c("Computation", class(computation))
+	computation
 }
-value.Computation <- function(comp) comp$val
-input.Computation <- function(comp) comp$input
-identifier.Computation <- function(comp) comp$id
-output.Computation <- function(comp) comp$output
-is.Computation <- function(comp) inherits(comp, "Computation")
-format.Computation <- function(comp, ...) {
-	c("Computation", format(identifier(comp)))
-}
-print.Computation <- function(comp, ...) cat(format(comp), "\n")
+is.Computation <- function(computation) inherits(computation, "Computation")
+identifier.Computation <- function(x) x$identifier
+input.Computation <- function(x, ...) x$input
+output.Computation <- function(x) x$output
+value.Computation <- function(x) x$value
+format.Computation <- function(computation, ...)
+	c(format(identifier(computation)), format(input(computation)),
+	  format(value(computation)), format(output(computation)))
+print.Computation <- function(computation, ...)
+	cat("Computation:", format(computation), "\n")
 
-do.function <- function(fun, input) {
-    comp <- computation(fun=fun, input=input)
-    send(comp)
-    chunk(id=output(comp), computation=identifier(comp))
+distributed.do.call <- function(what, args, quote = FALSE, envir = parent.frame) {
+	# distribute any non-distributed args through sending AssociativeArray
+	# id->value, then save the resulting data and pass them to computation as input
+	send(args)
+	comp <- computation(identifier=identifier(), input=args,
+			    value=what, output=identifier())
+	send(comp)
+	data(identifier=output(comp), input=identifier(comp))
 }

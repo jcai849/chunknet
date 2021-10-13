@@ -1,11 +1,8 @@
-Identifier <- function(x, ...) UseMethod("Identifier")
-Identifier.numeric <- function(n, ...) Identifier(as.integer(n))
-Identifier.integer <- function(n, ...) Identifier(UUIDgenerate(n=n))
-Identifier.character <- function(key, ...) structure(key, class="Identifier")
-key.Identifier <- function(id) unclass(id)
-
+identifier <- function(x, ...) UseMethod("Identifier")
+identifier.numeric <- function(n, ...) identifier(as.integer(n))
+identifier.integer <- function(n, ...) identifier(UUIDgenerate(n=n))
+identifier.character <- function(key, ...) structure(key, class="Identifier")
 is.Identifier <- function(id) inherits(id, "Identifier")
 
-format.Identifier <- function(id, ...) c("Identifier", key(id))
-print.Identifier <- function(id, ...)  cat(format(id), "\n")
-str.Identifier <- function(id, ...) cat("Identifier: ", format(key(id)), "\n")
+format.Identifier <- function(id, ...) c("Identifier", as.character(id))
+print.Identifier <- str.Identifier <- function(id, ...)  cat(format(id), "\n")

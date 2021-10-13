@@ -3,12 +3,13 @@ Location <- function(host, port) {
         structure(list(host=host, port=port), class="Location")
 }
 is.Location <- function(location) inherits(location, "Location")
+format.Location <- function(location, ...) as.character(location)
+print.Location <- function(location, ...) cat(format(location), '\n')
 
-# coercion
-Key.Location <- as.character.Location <- function(x) {
+as.character.Location <- function(x) {
         past0("tcp://", host, ":", port)
 }
-Location.Endpoint <- function(x) {
+as.Location.Endpoint <- function(x) {
         address <- get.last.endpoint(x)
         re <- ".*://(.+):([[:digit:]]+).*"
         location <- regmatches(address, regexec(re, address))[[1]]
