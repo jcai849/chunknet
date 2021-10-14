@@ -1,15 +1,17 @@
-associative_array <- function() {
+AssociativeArray <- function() {
 	table <- new.env(parent=emptyenv())
 	class(table) <- c("AssociativeArray", class(table))
 }
-associate <- function(key, value) {
+association <- function(key, value) {
 	stopifnot(is.character(key))
-	table <- associative_array()
-	mapply(assign, x=key, value=value, Moreargs=list(envir=table))
+	table <- AssociativeArray()
+	assign(key, value, envir=table)
 	table
 }
-[.AssociativeArray <- function(x, i) get(i, envir=x)
+is.AssociativeArray <- function(x) inherits(x, "AssociativeArray")
 `|.AssociativeArray` <- merge.AssociativeArray <- function(x, y, ...) {
+	stopifnot(is.AssociativeArray(x),
+		  is.AssociativeArray(y))
 	 y_keys <- ls(y)
 	 x_keys <- ls(x)
 	 y_values <- mget(y_keys, y)
@@ -21,5 +23,8 @@ associate <- function(key, value) {
 		      y_values[setdiff(y_keys, x_keys)])
 	 keys <- c(names(intersections), names(uniques))
 	 values <- c(intersections, uniques)
-	 mapply(associate, keys, values)
- }
+	 table <- AssociativeArray()
+	 mapply(assign, keys, values, MoreArge=list(envir=table))
+	 table
+}
+keys.AssociativeArray <- ls

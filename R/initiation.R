@@ -13,18 +13,19 @@ spawn <- function(initiatee, self, other) {
 	message
 }
 
-# "Location Service" is one without any other. Use the "Location Service" as other.
+# "Location Service" is a service that knows of no other. Use the "Location
+# Service" as 'other' for subsequent nodes, if a centralised service is desired.
 service <- function(self, initiator, other) {
 	stopifnot(is.Location(self),
 		  is.missing(initiator) || is.Location(initiator),
 		  is.missing(other) || is.Location(other))
 	replier <- Replier(self)
 	if (!missing(initiator)) notify(initiator, replier)
-	associations <- if (!missing(other)) {
+	locations <- if (!missing(other)) {
 		notify(other, replier)
-		associate("Locations", other)
-	} else AssociativeArray()
-	process(replier, associations)
+		list(other)
+	} else list()
+	process_loop(replier, association("Locations", promise_resolved(locations)))
 }
 
 notify <- function(location, replier) {
