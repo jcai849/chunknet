@@ -37,7 +37,3 @@ print.Publisher <- function(x, ...)
 	cat("Publisher with last binding at location: ", format(x), "\n")
 print.Subscriber <- function(x, ...)
 	cat("Subscriber with last connection at location: ", format(x), "\n")
-
-GET <- function(x, how) structure(list(x), class="GET")
-POST <- function(x) structure(list(x), class="POST")
-PUT <- function(x) structure(list(x), class="PUT")
