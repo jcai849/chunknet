@@ -1,6 +1,0 @@
-library(largerscale)
-HOST("127.0.0.1")
-x <- Identifier(1L)
-spawn_location_service("127.0.0.1")
-spawn_store("127.0.0.1")
-locate(x)

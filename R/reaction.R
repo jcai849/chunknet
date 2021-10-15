@@ -1,24 +1,30 @@
-# Replication via sending AssociativeArrays
-# - Recovery: after locating in an emerge, unavailability is signalled via
-#	receiving list of Locations instead of NULL acknowledgement. Recover
-#	based on generator of Data.
-# - Initialisation: recover with Data that holds it's value in generator.
-# TODO:
-# process :: x -> Promise -> Data		
-# emerge :: Identifier -> Data	# auto-recovery if not found
-# send :: Data, Location -> Data
-# run :: Computation, Data[] -> Data
-
-process_loop <- function(replier, associations) {
+process_loop <- function(replier, publisher, subscriber, knowledge) {
 	stopifnot(is.Replier(replier),
-		  is.AssociativeArray(associations))
+		  is.Publisher(publisher),
+		  is.Subscriber(subscriber),
+		  is.Knowledge(knowledge))
+	listeners <- list(replier, subscriber)
 	repeat {
-		message <- receive(replier)
-		send.socket(replier, NULL)
-		result <- process(message, associations, replier)
-		associations <- merge(associations, result)
+		to_read <- unlist(poll.socket(listeners,
+					      rep("read",length(listeners)),
+					      timeout=-1L))
+		actions <- lapply(listeners[to_read], process, knowledge) 
+		# generate something to merge or to replace, and return a mask
+		# for relevant knowledge as well as a result to replace it with
+		for (action in actions) {
+			knowledge[relevant_knowledge_mask(action)] <-
+				result(action)
+		}
 	}
 }
+
+Knowledge <- function(nodes, subscriptions, chunk_locations, chunk_values) {
+	knowledge <- list(nodes=nodes, subscriptions=subscriptions,
+			  chunk_locations=chunk_locations,
+			  chunk_values=chunk_values)
+	structure(knowledge, class=c("Knowledge", class(knowledge)))
+}
+is.Knowledge <- function(x) inherits(x, "Knowledge")
 
 process <- function(x, associations) {
 	stopifnot(is.AssociativeArray(associations))
