@@ -77,6 +77,9 @@ MultiListener.Node <- function(x, ...) {
 is.MultiListener <- function(x) inherits(x, "MultiListener")
 Replier.MultiListener  <- function(x, ...) x$replier
 Subscriber.MultiListener  <- function(x, ...) x$subscriber
+listen.MultiListener <- function(x, ...) {
+	unlist(poll.socket(listeners, rep("read", length(listeners)), ...))
+}
 
 MultiSpeaker <- function(x, ...) UseMethod("MultiSpeaker")
 MultiSpeaker.Requester <- function(x, publisher, ...) {
@@ -110,3 +113,5 @@ Publisher.Communicator <- function(x, ...) Publisher(MultiSpeaker(x))
 Requester.Communicator <- function(x, ...) Requester(MultiSpeaker(x))
 Replier.Communicator <- function(x, ...) Replier(MultiListener(x))
 Subscriber.Communicator <- function(x, ...) Subscriber(MultiListener(x))
+listen.Communicator <- function(x, ...) c(listen(MultiListener(x)), FALSE, FALSE)
+`[`.Communicator <- function(x, i) c(MultiListener(x)[i], MultiSpeaker(x)[i])
