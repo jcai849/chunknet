@@ -3,18 +3,51 @@ process_loop <- function(communicator, repository) {
 		  is.Repository(repository))
 	repeat {
 		to_read <- listen(communicator, timeout=-1L)
-		messages <- lapply(communicator[to_read], read)
-		repository <- Reduce(function(repository, message)
-					    process(message, repository, communicator),
-				    messages,
+		requests <- lapply(communicator[to_read], read)
+		repository <- Reduce(function(repository, request)
+					    process(request, repository, communicator),
+				    requests,
 				    init=repository)
 	}
 }
 
-process <- function(x, associations) {
+process <- function(request, repository, communicator, ...) {
 	stopifnot(is.AssociativeArray(associations))
 	UseMethod("process")
 }
+
+process.GET_Request <- function(request, repository, communicator, ...)
+	process_GET_Request(value(request), code(request),
+			    repository, communicator, ...)
+process.POST_Request <- function(request, repository, communicator, ...)
+	process_POST_Request(value(request), repository, communicator, ...)
+process.PUT_Request <- function(request, repository, communicator, ...)
+	process_PUT_Request(value(request), repository, communicator, ...)
+
+process_GET_Request <- function(identifier, how, repository, communicator)
+	UseMethod("process_GET_Request")
+process_POST_Request <- function(value, repository, communicator)
+	UseMethod("process_POST_Request")
+process_PUT_Request <- function(value, repository, communicator)
+	UseMethod("process_PUT_Request")
+
+process_POST_REQUEST.Index <- function(value, repository, communicator) {
+	POST(Replier(communicator), Index(repository))
+	nodes <- c(Nodes(repository), Nodes(value))
+	identified_locations <- c(IdentifiedLocations(repository),
+				  IdentifiedLocations(value))
+	index <- Index(nodes, identified_locations)
+	Repository(index, IdentifiedEventuals(repository))
+}
+process_PUT_REQUEST.Chunk <- function(value, repository, communicator) {
+	POST(Replier(communicator), TRUE)
+	identified_Eventuals <- IdentifiedEventuals(Identifier(value),
+						    resolved_promise(value))
+	Repository(Index(repository), identified_eventuals)
+}
+
+
+### OLD
 process.list <- function(x, associations) {
 	identifier <- x$identifier
 	location <- x$location

@@ -48,6 +48,7 @@ GET_Request <- function(x, code) {
 	stopifnot(is.Identifier(x), is.function(code))
 	Request(Header("GET"), GET_Payload(x, code))
 }
+code.GET_Request <- function(x, ...) code(Payload(x))
 POST_Request <- function(x) {
 	Request(Header("POST"), Payload(x))
 }

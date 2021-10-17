@@ -133,4 +133,4 @@ format.Communicator <- function(x, ...)
 	    paste0(' ', capture.output(print(Listener(x)))),
 	    paste0(' ', capture.output(print(Speaker(x)))))
 listen.Communicator <- function(x, ...) c(listen(Listener(x)), FALSE, FALSE)
-`[`.Communicator <- function(x, i) c(Listener(x)[i], Speaker(x)[i])
+`[.Communicator` <- function(x, i) c(Listener(x)[i], Speaker(x)[i])

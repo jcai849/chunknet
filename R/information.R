@@ -19,7 +19,7 @@ Chunks <- function(...) {
 Data <- function(chunk, value) {
 	stopifnot(is.Chunk(chunk))
 	data <- list(chunk=chunk, value=value)
-	structure(data, class=c("Data", class(data))
+	structure(data, class=c("Data", class(data)))
 }
 is.Data <- function(data) inherits(data, "Data")
 Chunk.Data <- function(x, ...) x$chunk

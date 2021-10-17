@@ -16,7 +16,7 @@ AssociativeArray <- function(key, value) {
 }
 
 is.AssociativeArray <- function(x) inherits(x, "AssociativeArray")
-`|.AssociativeArray` <- merge.AssociativeArray <- function(x, y, ...) {
+c.AssociativeArray <- function(x, y, ...) {
 	stopifnot(is.AssociativeArray(x),
 		  is.AssociativeArray(y))
 	 y_keys <- ls(y)
