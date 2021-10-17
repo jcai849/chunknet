@@ -1,12 +1,22 @@
+Repository <- function(index, identified_eventuals) {
+	        stopifnot(is.Index(index),
+			  is.IdentifiedEventuals(identified_eventuals))
+        repository <- list(index=index, identified_eventuals=identified_eventuals)
+	        structure(repository, class=c("Repository", class(repository)))
+}
+is.Repository <- function(x) inherits(x, "Repository")
+Index.Repository <- function(x) x$index
+IdentifiedEventuals.Repository <- function(x) x$identified_eventuals
+
 AssociativeArray <- function() {
 	table <- new.env(parent=emptyenv())
-	class(table) <- c("AssociativeArray", class(table))
+	structure(table, class=c("AssociativeArray", class(table)))
 }
 association <- function(key, value) {
 	stopifnot(is.character(key))
-	table <- AssociativeArray()
-	assign(key, value, envir=table)
-	table
+	associative_array <- AssociativeArray()
+	assign(key, value, envir=associative_array)
+	associative_array
 }
 is.AssociativeArray <- function(x) inherits(x, "AssociativeArray")
 `|.AssociativeArray` <- merge.AssociativeArray <- function(x, y, ...) {
