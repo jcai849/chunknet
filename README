@@ -5,7 +5,8 @@ identification.R
  Identifier: character
 
 communication.R
- Endpoint: socket (externalptr)
+ Context: context (externalptr)
+ Endpoint: socket (externalptr), context
  Connector, Binder: Endpoint (inherits)
  Requester, Subscriber: Connector (inherits)
  Replier, Publisher: Binder (inherits)

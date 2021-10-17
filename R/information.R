@@ -62,6 +62,7 @@ IdentifiedEventuals.Identifier <- function(x, eventual) {
 	structure(identified_eventuals,
 		  class=c("IdentifiedEventuals", class(identified_eventuals)))
 }
+is.IdentifiedEventuals <- function(x) inherits(x, "IdentifiedEventuals")
 
 distributed.do.call <- function(what, args, quote = FALSE, envir = parent.frame) {
 	# convert non-distributed args to Data and PUT, POST computation, return chunk

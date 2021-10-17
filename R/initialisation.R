@@ -16,17 +16,17 @@ spawn <- function(initiatee, self, other) {
 
 service <- function(self, initiator, other, live=TRUE) {
 	stopifnot(is.Node(self),
-		  is.missing(initiator) || is.ReplierLocation(initiator),
-		  is.missing(other) || is.ReplierLocation(other))
+		  missing(initiator) || is.ReplierLocation(initiator),
+		  missing(other) || is.ReplierLocation(other))
 	communicator <- Communicator(self)
 	if (!missing(initiator)) notify(communicator, initiator)
 	index <- if (!missing(other)) {
 		index <- notify(communicator, other)
 		index
 	} else Index()
-	for (publisher in Publisher(index))
+	for (publisher in PublisherLocation(index))
 		connect.socket(Subscriber(communicator), subscription)
-	repository <- Repository(index, Eventuals())
+	repository <- Repository(index, IdentifiedEventuals())
 	if (live)
 		process_loop(communicator, repository)
 }

@@ -9,9 +9,9 @@ Index.Repository <- function(x) x$index
 IdentifiedEventuals.Repository <- function(x) x$identified_eventuals
 
 AssociativeArray <- function(key, value) {
-	stopifnot(is.missing(key) || is.character(key))
+	stopifnot(missing(key) || is.character(key))
 	table <- new.env(parent=emptyenv())
-	if (!is.missing(key)) assign(key, value, envir=table)
+	if (!missing(key)) assign(key, value, envir=table)
 	structure(table, class=c("AssociativeArray", class(table)))
 }
 

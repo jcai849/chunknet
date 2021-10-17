@@ -1,4 +1,4 @@
-Location <- function(x, ...) UseMethod("as.Location")
+Location <- function(x, ...) UseMethod("Location")
 Location.character <- function(x, port, ...) {
         stopifnot(is.integer(port))
         structure(list(host=x, port=port), class="Location")
@@ -16,6 +16,15 @@ PublisherLocation <- function(x, ...) UseMethod("PublisherLocation")
 SubscriberLocation <- function(x, ...) UseMethod("SubscriberLocation")
 ReplierLocation <- function(x, ...) UseMethod("ReplierLocation")
 RequesterLocation <- function(x, ...) UseMethod("RequesterLocation")
+
+ReplierLocation.character <- function(x, ...) {
+	replier_location <- Location(x, ...)
+	structure(replier_location, class=c("ReplierLocation", class(replier_location)))
+}
+PublisherLocation.character <- function(x, ...) {
+	publisher_location <- Location(x, ...)
+	structure(publisher_location, class=c("PublisherLocation", class(publisher_location)))
+}
 
 Location.Endpoint <- function(x, ...) {
         address <- get.last.endpoint(x)
@@ -46,22 +55,30 @@ IdentifiedLocations.Identifier <- function(x, location) {
 }
 is.IdentifiedLocations <- function(x) inherits(x, "IdentifiedLocations")
 
-Node <- function(replier_location, publisher_location) {
-	stopifnot(is.ReplierLocation(replier_location),
-		  is.PublisherLocation(publisher_location))
-	node <- list(replier_location=replier_location,
+Node <- function(x, ...) UseMethod("Node")
+Node.ReplierLocation <- function(x, publisher_location) {
+	stopifnot(is.PublisherLocation(publisher_location))
+	node <- list(replier_location=x,
 		     publisher_location=publisher_location)
 	structure(node, class=c("Node", class(node)))
 }
 is.Node <- function(x) inherits(x, "Node")
 ReplierLocation.Node <- function(x, ...) x$replier_location
 PublisherLocation.Node <- function(x, ...) x$publisher_location
+print.Node <- function(x, ...)
+	cat("Node: ",
+	    paste0(' ', capture.output(print(ReplierLocation(x)))),
+	    paste0(' ', capture.output(print(PublisherLocation(x)))),
+	    sep="\n")
 
-Nodes <- function(...) {
+Nodes <- function(...) if (missing(...)) Nodes.Node() else UseMethod("Nodes", ..1)
+Nodes.Node <- function(...) {
 	nodes <- list(...)
-	stopifnot(sapply(nodes, is.Node))
+	stopifnot(!length(nodes) || sapply(nodes, is.Node))
 	structure(nodes, class=c("Nodes", class(nodes)))
 }
+ReplierLocation.Nodes <- function(x, ...) lapply(x, ReplierLocation)
+PublisherLocation.Nodes <- function(x, ...) lapply(x, PublisherLocation)
 
 Index <- function(x, ...) {
 	if (missing(x)) Index(Nodes(), IdentifiedLocations()) else UseMethod("Index")
@@ -77,3 +94,8 @@ Index.Node <- function(x, ...) {
 Index.Communicator <- function(x, ...) {
 	Index(Node(x), IdentifiedLocations())
 }
+is.Index <- function(x) inherits(x, "Index")
+Nodes.Index <- function(...) ..1$nodes
+IdentifiedLocations.Index <- function(x, ...) x$identified_locations
+ReplierLocation.Index <- function(x, ...) ReplierLocation(Nodes(x))
+PublisherLocation.Index <- function(x, ...) PublisherLocation(Nodes(x))
