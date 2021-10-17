@@ -1,0 +1,40 @@
+file.R
+ class: composition
+
+identification.R
+ Identifier: character
+
+communication.R
+ Endpoint: socket (externalptr)
+ Listener: Endpoint (inherits)
+ Speaker: Endpoint (inherits)
+ Replier, Subscriber: Listener (inherits)
+ Requester, Publisher: Speaker (inherits)
+ MultiListener: Replier, Subsciber
+ MultiSpeaker: Requester, Publisher
+ Communicator: MultiListener, MultiSpeaker
+
+interpellation.R
+ Request: Header and Payload
+ GET_Payload: means (function), Identifier
+
+location.R
+ Location: host, port
+ IdentifiedLocations = {Identifier: Location}
+ ReplierLocation, PublisherLocation: Location (inherits)
+ Node: ReplierLocation, PublisherLocation
+ Nodes: Node[]
+ Index: Nodes, Locations
+
+information.R
+ Chunk: Identifier,  Input (Identifier)
+ Data: Chunk (inherits), value (Any)
+ Computation: Identifier, input (chunk[]), value (function), output (identifier)
+ IdentifiedEventuals: {Identifier: Promise(Data/Computation)}
+
+tabulation.R
+ Repository: Index, IdentifiedEventuals
+
+initialisation.R
+
+procession.R
