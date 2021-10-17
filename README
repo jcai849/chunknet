@@ -6,13 +6,12 @@ identification.R
 
 communication.R
  Endpoint: socket (externalptr)
- Listener: Endpoint (inherits)
- Speaker: Endpoint (inherits)
- Replier, Subscriber: Listener (inherits)
- Requester, Publisher: Speaker (inherits)
- MultiListener: Replier, Subsciber
- MultiSpeaker: Requester, Publisher
- Communicator: MultiListener, MultiSpeaker
+ Connector, Binder: Endpoint (inherits)
+ Requester, Subscriber: Connector (inherits)
+ Replier, Publisher: Binder (inherits)
+ Listener: Replier, Subscriber
+ Speaker: Requester, Publisher
+ Communicator: Listener, Speaker
 
 interpellation.R
  Request: Header and Payload

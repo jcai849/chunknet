@@ -5,10 +5,10 @@ Endpoint <- function(type, connection) {
 			if (missing(context)) init.context() else context
 		endpoint <- init.socket(initialised_context, type)
 		class(endpoint) <- c(switch(type,
-					    ZMQ_REP=c("Replier", "Listener"),
-					    ZMQ_REQ=c("Requester", "Speaker"),
-					    ZMQ_PUB=c("Publisher", "Speaker"),
-					    ZMQ_SUB=c("Subscriber", "Listener")),
+					    ZMQ_REP=c("Replier", "Binder"),
+					    ZMQ_REQ=c("Requester", "Connector"),
+					    ZMQ_PUB=c("Publisher", "Binder"),
+					    ZMQ_SUB=c("Subscriber", "Connector")),
 				     "Endpoint",
 				     class(endpoint))
 		connection(endpoint, as.character(x))
@@ -19,20 +19,19 @@ is.Endpoint <- function(x) inherits(x, "Endpoint")
 format.Endpoint <- function(x, ...) format(as.Location(x))
 print.Endpoint <- function(x, ...) cat("Endpoint: ", format(x), "\n")
 
-is.Listener <- function(x) inherits(x, "Listener")
-print.Listener <- function(x, ...) {
-	cat("Listener with last binding at: ")
+is.Binder <- function(x) inherits(x, "Binder")
+print.Binder <- function(x, ...) {
+	cat("Binder with last binding at: ")
 	NextMethod()
 }
-is.Speaker <- function(x, ...) inherits(x, "Speaker")
-print.Speaker <- function(x, ...) {
-	cat("Speaker with last connection at: ")
+is.Connector <- function(x, ...) inherits(x, "Connector")
+print.Connector <- function(x, ...) {
+	cat("Connector with last connection at: ")
 	NextMethod()
 }
 
 maybe_connect <- function(endpoint, at)
 	if (!missing(at)) connect.socket(endpoint, at)
-
 Replier <- function(x, ...) UseMethod("Replier")
 Requester <- function(x, ...) {
 	if (missing(x)) Requester.Location() else UseMethod("Requester")
@@ -41,7 +40,6 @@ Publisher <- function(x, ...) UseMethod("Publisher")
 Subscriber <- function(x, ...) {
 	if (missing(x)) Subscriber.Location() else UseMethod("Subscriber")
 }
-
 Replier.Location <- Endpoint("ZMQ_REP", bind.socket)
 Requester.Location <- Endpoint("ZMQ_REQ", maybe_connect)
 Publisher.Location <- Endpoint("ZMQ_PUB", bind.socket)
@@ -54,64 +52,79 @@ is.Publisher <- function(x) inherits(x, "Publisher")
 is.Requester <- function(x) inherits(x, "Requester")
 is.Replier <- function(x) inherits(x, "Replier")
 is.Subscriber <- function(x) inherits(x, "Subscriber")
-
 print.Replier <- function(x, ...) { cat("Replier: "); NextMethod() }
 print.Requester <- function(x, ...) { cat("Requester: "); NextMethod() }
 print.Publisher <- function(x, ...) { cat("Publisher: "); NextMethod() }
 print.Subscriber <- function(x, ...) { cat("Subscriber: "); NextMethod() }
 
-MultiListener <- function(x, ...) UseMethod("MultiListener")
-MultiListener.Replier <- function(x, subscriber, ...) {
+Listener <- function(x, ...) UseMethod("Listener")
+Listener.Replier <- function(x, subscriber, ...) {
 	stopifnot(is.subscriber(subscriber))
-	multi_listener <- list(replier=x, subscriber=subscriber)
-	class(multi_listener) <- c("MultiListener", class(multi_listener))
-	multi_listener
+	listener <- list(replier=x, subscriber=subscriber)
+	class(listener) <- c("Listener", class(listener))
+	listener
 }
-MultiListener.ReplierLocation <- function(x, publisher_location, context, ...) {
+Listener.ReplierLocation <- function(x, publisher_location, context, ...) {
 	stopifnot(is.missing(publisher_location) || is.publisher_location)
-	MultiListener(Replier(x, context), Subscriber(publisher_location, context))
+	Listener(Replier(x, context), Subscriber(publisher_location, context))
 }
-MultiListener.Node <- function(x, ...) {
-	MultiListener(Replier(x, ...), Subscriber(...))
+Listener.Node <- function(x, ...) {
+	Listener(Replier(x, ...), Subscriber(...))
 }
-is.MultiListener <- function(x) inherits(x, "MultiListener")
-Replier.MultiListener  <- function(x, ...) x$replier
-Subscriber.MultiListener  <- function(x, ...) x$subscriber
-listen.MultiListener <- function(x, ...) {
+is.Listener <- function(x) inherits(x, "Listener")
+Replier.Listener  <- function(x, ...) x$replier
+Subscriber.Listener  <- function(x, ...) x$subscriber
+format.Listener <- function(x, ...)
+	c(format(Replier(x)), format(Subscriber(x)))
+print.Listener <- function(x, ...)
+	cat("Listener:\n",
+	    paste0(' ', capture.output(print(Replier(x)))),
+	    paste0(' ', capture.output(print(Subscriber(x)))))
+listen.Listener <- function(x, ...) {
 	unlist(poll.socket(listeners, rep("read", length(listeners)), ...))
 }
 
-MultiSpeaker <- function(x, ...) UseMethod("MultiSpeaker")
-MultiSpeaker.Requester <- function(x, publisher, ...) {
+Speaker <- function(x, ...) UseMethod("Speaker")
+Speaker.Requester <- function(x, publisher, ...) {
 	stopifnot(is.Publisher(publisher))
-	multi_speaker <- list(requester=x, publisher=publisher)
-	class(multi_speaker) <- c("MultiSpeaker", class(multi_speaker))
-	multi_speaker
+	speaker <- list(requester=x, publisher=publisher)
+	class(speaker) <- c("Speaker", class(speaker))
+	speaker
 }
-MultiSpeaker.Node <- function(x, ...) {
-	MultiSpeaker(Requester(...), Publisher(x, ...))
+Speaker.Node <- function(x, ...) {
+	Speaker(Requester(...), Publisher(x, ...))
 }
-is.MultiSpeaker <- function(x) inherits(x, "MultiSpeaker")
-Requester.MultiSpeaker <- function(x, ...) x$requester
-Publisher.MultiSpeaker <- function(x, ...) x$publisher
+is.Speaker <- function(x) inherits(x, "Speaker")
+Requester.Speaker <- function(x, ...) x$requester
+Publisher.Speaker <- function(x, ...) x$publisher
+format.Speaker <- function(x, ...)
+	c(format(Requester(x)), format(Publisher(x)))
+print.Speaker <- function(x, ...)
+	cat("Speaker:\n",
+	    paste0(' ', capture.output(print(Requester(x)))),
+	    paste0(' ', capture.output(print(Publisher(x)))))
 
 Communicator <- function(x, ...) UseMethod("Communicator", ...)
-Communicator.MultiListener <- function(x, multi_speaker, ...) {
-	stopifnot(is.MultiSpeaker(multi_speaker))
-	endpoints <- list(multi_listener=x, multi_speaker=multi_speaker)
+Communicator.Listener <- function(x, speaker, ...) {
+	stopifnot(is.Speaker(speaker))
+	endpoints <- list(listener=x, speaker=speaker)
 	class(endpoints) <- c("Communicator", class(endpoints))
 	endpoints
 }
 Communicator.Node <- function(x, ...) {
 	context <- init.context()
-	Communicator(MultiListener(x, context), MultiSpeaker(x, context))
+	Communicator(Listener(x, context), Speaker(x, context))
 }
 is.Communicator <- function(x) inherits(x, "Communicator")
-MultiListener.Communicator <- function(x, ...) x$multi_listener
-MultiSpeaker.Communicator <- function(x, ...) x$multi_speaker
-Publisher.Communicator <- function(x, ...) Publisher(MultiSpeaker(x))
-Requester.Communicator <- function(x, ...) Requester(MultiSpeaker(x))
-Replier.Communicator <- function(x, ...) Replier(MultiListener(x))
-Subscriber.Communicator <- function(x, ...) Subscriber(MultiListener(x))
-listen.Communicator <- function(x, ...) c(listen(MultiListener(x)), FALSE, FALSE)
-`[`.Communicator <- function(x, i) c(MultiListener(x)[i], MultiSpeaker(x)[i])
+Listener.Communicator <- function(x, ...) x$listener
+Speaker.Communicator <- function(x, ...) x$speaker
+Publisher.Communicator <- function(x, ...) Publisher(Speaker(x))
+Requester.Communicator <- function(x, ...) Requester(Speaker(x))
+Replier.Communicator <- function(x, ...) Replier(Listener(x))
+Subscriber.Communicator <- function(x, ...) Subscriber(Listener(x))
+format.Communicator <- function(x, ...)
+	cat("Communicator:\n",
+	    paste0(' ', capture.output(print(Listener(x)))),
+	    paste0(' ', capture.output(print(Speaker(x)))))
+listen.Communicator <- function(x, ...) c(listen(Listener(x)), FALSE, FALSE)
+`[`.Communicator <- function(x, i) c(Listener(x)[i], Speaker(x)[i])
