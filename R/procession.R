@@ -1,30 +1,15 @@
-process_loop <- function(replier, publisher, subscriber, knowledge) {
-	stopifnot(is.Replier(replier),
-		  is.Publisher(publisher),
-		  is.Subscriber(subscriber),
-		  is.Knowledge(knowledge))
-	listeners <- list(replier, subscriber)
+process_loop <- function(communicator, repository) {
+	stopifnot(is.Communicator(communicator),
+		  is.Repository(repository))
 	repeat {
-		to_read <- unlist(poll.socket(listeners,
-					      rep("read",length(listeners)),
-					      timeout=-1L))
-		actions <- lapply(listeners[to_read], process, knowledge) 
-		# generate something to merge or to replace, and return a mask
-		# for relevant knowledge as well as a result to replace it with
-		for (action in actions) {
-			knowledge[relevant_knowledge_mask(action)] <-
-				result(action)
-		}
+		to_read <- listen(communicator, timeout=-1L)
+		messages <- lapply(communicator[to_read], read)
+		repository <- Reduce(function(repository, message)
+					    process(message, repository, communicator),
+				    messages,
+				    init=repository)
 	}
 }
-
-Knowledge <- function(nodes, subscriptions, chunk_locations, chunk_values) {
-	knowledge <- list(nodes=nodes, subscriptions=subscriptions,
-			  chunk_locations=chunk_locations,
-			  chunk_values=chunk_values)
-	structure(knowledge, class=c("Knowledge", class(knowledge)))
-}
-is.Knowledge <- function(x) inherits(x, "Knowledge")
 
 process <- function(x, associations) {
 	stopifnot(is.AssociativeArray(associations))
