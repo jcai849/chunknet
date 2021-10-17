@@ -9,9 +9,9 @@ spawn <- function(initiatee, self, other) {
 			    if (!missing(other)) list(other=other) else NULL,
 			    list(live=TRUE)))
 	system2("ssh", shQuote(shQuote(c(host, "R", "-e", deparse1(summon)))))
-	initiatee_node <- receive.socket(synchronizer)
+	initiatee_index <- value(read(synchronizer))
 	POST(synchronizer, Index())
-	initiatee_node
+	ReplierLocation(Node(initiatee_index))
 }
 
 service <- function(self, initiator, other, live=TRUE) {
@@ -36,6 +36,8 @@ notify <- function(communicator, location) {
 		  is.ReplierLocation(location))
 	requester <- Requester(communicator)
 	connect.socket(requester, as.character(location))
-	POST(endpoint=requester, payload=Node(communicator))
-	index <- payload(receive.socket(requester))
+	POST(requester, Index(communicator))
+	index <- value(read(requester))
+	disconnect.socket(requester, as.character(location))
+	index
 }

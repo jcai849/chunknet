@@ -14,8 +14,10 @@ communication.R
  Communicator: Listener, Speaker
 
 interpellation.R
- Request: Header and Payload
- GET_Payload: means (function), Identifier
+ Payload: value[]
+ GET_Payload: value, code
+ Request: Header, Payload
+ {GET,POST,PUT}_Request: Request (inherits)
 
 location.R
  Location: host, port
@@ -23,12 +25,13 @@ location.R
  ReplierLocation, PublisherLocation: Location (inherits)
  Node: ReplierLocation, PublisherLocation
  Nodes: Node[]
- Index: Nodes, Locations
+ Index: Nodes, IdentifiedLocations
 
 information.R
- Chunk: Identifier,  Input (Identifier)
+ Chunk: Identifier,  Input (Identifier/Chunks)
+ Chunks: Chunk[]
  Data: Chunk (inherits), value (Any)
- Computation: Identifier, input (chunk[]), value (function), output (identifier)
+ Computation: Data (inherits; input (Chunks), value (function)), output (identifier)
  IdentifiedEventuals: {Identifier: Promise(Data/Computation)}
 
 tabulation.R

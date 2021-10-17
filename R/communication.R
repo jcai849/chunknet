@@ -29,6 +29,12 @@ print.Connector <- function(x, ...) {
 	cat("Connector with last connection at: ")
 	NextMethod()
 }
+read <- function(x, ...) UseMethod("read")
+read.connector <- function(x) {
+	request <- receive.socket(x, ...)
+	stopifnot(is.Request(request))
+	request
+}
 
 maybe_connect <- function(endpoint, at)
 	if (!missing(at)) connect.socket(endpoint, at)
