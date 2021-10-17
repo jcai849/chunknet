@@ -39,7 +39,3 @@ notify <- function(communicator, location) {
 	POST(endpoint=requester, payload=Node(communicator))
 	index <- payload(receive.socket(requester))
 }
-
-POST <- function(endpoint, payload) {
-	send.socket(endpoint, POST_Request(payload))
-}

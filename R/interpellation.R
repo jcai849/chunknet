@@ -16,3 +16,7 @@ PUT_request <- function(x) {
 	stopifnot(is.Data(x))
 	REQUEST("PUT")(x)
 }
+
+POST <- function(endpoint, payload) {
+	        send.socket(endpoint, POST_Request(payload))
+}
