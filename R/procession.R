@@ -53,12 +53,12 @@ process.list <- function(x, associations) {
 	location <- x$location
 	stopifnot(is.Identifier(identifier),
 		  is.Location(location))
-	value <- if (exists(identifier, associations)) 
+	value <- if (exists(identifier, associations))
 		associations[[identifier]] else associations[["Locations"]]
 	association(x, value %...>% future_promise(send(., to=location)))
 }
 process.Location <- function(x, associations) {
-	association("Locations", 
+	association("Locations",
 		    associations[["Locations"]] %...>%
 			future_promise(function(locations) c(locations, list(x))))
 }

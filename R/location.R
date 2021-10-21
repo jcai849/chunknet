@@ -48,7 +48,7 @@ IdentifiedLocations <- function(x, ...) {
 IdentifiedLocations.Identifier <- function(x, location) {
 	stopifnot(missing(location) || is.Location(location))
 	identified_locations <- if (missing(x)) {
-		AssociativeArray() 
+		AssociativeArray()
 	} else AssociativeArray(x, location)
 	structure(identified_locations,
 		  class=c("IdentifiedLocations", class(identified_locations)))
@@ -79,6 +79,9 @@ Nodes.Node <- function(...) {
 }
 ReplierLocation.Nodes <- function(x, ...) lapply(x, ReplierLocation)
 PublisherLocation.Nodes <- function(x, ...) lapply(x, PublisherLocation)
+Node.Communicator <- function(x, ...) {
+    Node(ReplierLocation(x), PublisherLocation(x))
+}
 
 Index <- function(x, ...) {
 	if (missing(x)) Index(Nodes(), IdentifiedLocations()) else UseMethod("Index")

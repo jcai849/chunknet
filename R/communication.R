@@ -173,6 +173,9 @@ Publisher.Communicator <- function(x, ...) Publisher(Speaker(x))
 Requester.Communicator <- function(x, ...) Requester(Speaker(x))
 Replier.Communicator <- function(x, ...) Replier(Listener(x))
 Subscriber.Communicator <- function(x, ...) Subscriber(Listener(x))
+PublisherLocation.Communicator <- function(x, ...) Location(Publisher(x))
+ReplierLocation.Communicator <- function(x, ...) Location(Replier(x))
+
 format.Communicator <- function(x, ...)
 	cat("Communicator:\n",
 	    paste0(' ', capture.output(print(Listener(x)))),
