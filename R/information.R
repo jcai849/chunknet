@@ -1,13 +1,13 @@
 Chunk <- function(x, ...) UseMethod("Chunk")
-Chunk.Identifier <- function(x, input, ...) {
-	stopifnot(is.Identifier(input) || is.Chunks(input))
-	chunk <- list(identifier=x, input=input)
+Chunk.Identifier <- function(x, generator, ...) {
+	stopifnot(is.Identifier(generator) || is.null(generator))
+	chunk <- list(identifier=x, generator=generator)
 	structure(chunk, class=c("Chunk", class(chunk)))
 }
 is.Chunk <- function(chunk) inherits(chunk, "Chunk")
 Identifier.Chunk <- function(x, ...) x$identifier
-input.Chunk <- function(x, ...) x$input
-format.Chunk <- function(x, ...) c(format(identity(x)), format(input(x)))
+generator.Chunk <- function(x, ...) x$generator
+format.Chunk <- function(x, ...) c(format(identity(x)), format(generator(x)))
 print.Chunk <- function(x, ...) cat("Chunk:", format(x), "\n")
 
 Chunks <- function(...) {
@@ -25,25 +25,28 @@ is.Data <- function(data) inherits(data, "Data")
 Chunk.Data <- function(x, ...) x$chunk
 value.Data <- function(x, ...) x$value
 Identifier.Data <- function(x, ...) Identifier(Chunk(x))
-input.Data <- function(x, ...) input(Chunk(x))
+generator.Data <- function(x, ...) generator(Chunk(x))
 print.Data <- function(x, ...) {
 	cat("Data: value:", capture.output(str(value(x))))
 	NextMethod()
 }
 
-Computation <- function(data, output) {
-	stopifnot(is.Chunks(input(data)),
+Computation <- function(data, input, output) {
+	stopifnot(is.Chunks(input),
+	          is.Data(data),
+	          is.null(generator(data)),
 		  is.function(value(data)),
 		  is.Identifier(output))
-	computation <- list(data=data, output=output)
+	computation <- list(data=data, input=input, output=output)
 	structure(computation, class=c("Computation", class(computation)))
 }
 is.Computation <- function(computation) inherits(computation, "Computation")
 Data.Computation <- function(x, ...) x$data
 output.Computation <- function(x, ...) x$output
-Identifier.Computation <- function(x, ...) Identifier(Data(x))
-input.Computation <- function(x, ...) input(Data(x))
-value.Computation <- function(x) value(Data(x))
+Identifier.Computation <- function(x, ...) Identifier(Data(x, ...))
+input.Computation <- function(x, ...) x$input
+value.Computation <- function(x, ...) value(Data(x, ...))
+generator.Computation <- function(x, ...) NULL
 print.Computation <- function(x, ...) {
 	cat("Computation: output: ", capture.output(print(output(x))))
 	NextMethod()

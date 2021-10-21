@@ -16,7 +16,7 @@ communication.R
 
 interpellation.R
  Payload: value[]
- GET_Payload: value, code
+ GET_Payload: value, code; inherits Payload
  Request: Header, Payload
  {GET,POST,PUT}_Request: Request (inherits)
 
@@ -29,14 +29,15 @@ location.R
  Index: Nodes, IdentifiedLocations
 
 information.R
- Chunk: Identifier,  Input (Identifier/Chunks)
+ Chunk: Identifier, generator (Identifier/null)
  Chunks: Chunk[]
  Data: Chunk (inherits), value (Any)
- Computation: Data (inherits; input (Chunks), value (function)), output (identifier)
+ Computation: Data (inherits; generator (null), value (function)), input (Chunks), output (identifier)
  IdentifiedEventuals: {Identifier: Promise(Data/Computation)}
 
 tabulation.R
  Repository: Index, IdentifiedEventuals
+ AssociativeArray
 
 initialisation.R
 
