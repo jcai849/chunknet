@@ -47,15 +47,22 @@ IdentifiedLocations <- function(x, ...) {
 		IdentifiedLocations.Identifier()
 	} else UseMethod("IdentifiedLocations")
 }
+IdentifiedLocations.AssociativeArray <- function(x, ...) {
+    stopifnot(!length(keys(x)) || sapply(mget(keys(x), x), is.Location))
+    structure(x, class=c("IdentifiedLocations", class(x)))
+}
 IdentifiedLocations.Identifier <- function(x, location) {
 	stopifnot(missing(location) || is.Location(location))
 	identified_locations <- if (missing(x)) {
-		AssociativeArray()
-	} else AssociativeArray(x, location)
-	structure(identified_locations,
-		  class=c("IdentifiedLocations", class(identified_locations)))
+                AssociativeArray()
+            } else AssociativeArray(x, location)
+        IdentifiedLocations(identified_locations)
 }
 is.IdentifiedLocations <- function(x) inherits(x, "IdentifiedLocations")
+c.IdentifiedLocations <- function(...) {
+    identified_locations <- c.AssociativeArray(...)
+    IdentifiedLocations(identified_locations)
+}
 
 Node <- function(x, ...) UseMethod("Node")
 Node.ReplierLocation <- function(x, publisher_location) {
@@ -67,11 +74,17 @@ Node.ReplierLocation <- function(x, publisher_location) {
 is.Node <- function(x) inherits(x, "Node")
 ReplierLocation.Node <- function(x, ...) x$replier_location
 PublisherLocation.Node <- function(x, ...) x$publisher_location
+Node.Communicator <- function(x, ...) {
+    Node(ReplierLocation(x), PublisherLocation(x))
+}
 print.Node <- function(x, ...)
 	cat("Node: ",
 	    paste0(' ', capture.output(print(ReplierLocation(x)))),
 	    paste0(' ', capture.output(print(PublisherLocation(x)))),
 	    sep="\n")
+c.Node <- function(...) {
+    Nodes(...)
+}
 
 Nodes <- function(...) if (missing(...)) Nodes.Node() else UseMethod("Nodes", ..1)
 Nodes.Node <- function(...) {
@@ -81,9 +94,10 @@ Nodes.Node <- function(...) {
 }
 ReplierLocation.Nodes <- function(x, ...) lapply(x, "ReplierLocation.Node")
 PublisherLocation.Nodes <- function(x, ...) lapply(x, "PublisherLocation.Node")
-Node.Communicator <- function(x, ...) {
-    Node(ReplierLocation(x), PublisherLocation(x))
+c.Nodes <- function(...) {
+    do.call(Nodes, unlist(list(...), recursive=FALSE))
 }
+
 
 Index <- function(x, ...) {
 	if (missing(x)) Index(Nodes(), IdentifiedLocations()) else UseMethod("Index")

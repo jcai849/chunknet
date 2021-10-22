@@ -16,7 +16,7 @@ Endpoint.character <- function(x, ...) {
 	structure(endpoint, class=c("Endpoint", class(endpoint)))
 }
 is.Endpoint <- function(x) inherits(x, "Endpoint")
-format.Endpoint <- function(x, ...) format(as.Location(x))
+format.Endpoint <- function(x, ...) format(Location(x))
 print.Endpoint <- function(x, ...) cat("Endpoint: ", format(x), "\n")
 
 Binder <- function(x, ...) UseMethod("Binder")
@@ -182,5 +182,5 @@ format.Communicator <- function(x, ...)
 	cat("Communicator:\n",
 	    paste0(' ', capture.output(print(Listener(x)))),
 	    paste0(' ', capture.output(print(Speaker(x)))))
-listen.Communicator <- function(x, ...) c(listen(Listener(x), ...), FALSE, FALSE)
-`[.Communicator` <- function(x, i) c(Listener(x)[i], Speaker(x)[i])
+listen.Communicator <- function(x, ...) listen(Listener(x), ...)
+`[.Communicator` <- function(x, i) c(Listener(x), Speaker(x))[i]

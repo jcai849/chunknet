@@ -2,8 +2,8 @@ process_loop <- function(communicator, repository) {
 	stopifnot(is.Communicator(communicator),
 		  is.Repository(repository))
 	repeat {
-		to_read <- listen(communicator, timeout=-1L)
-		requests <- lapply(communicator[to_read], read)
+		to_read <- listen(Listener(communicator), timeout=-1L)
+		requests <- lapply(Listener(communicator)[to_read], function(x) {read(x)})
 		repository <- Reduce(function(repository, request)
 					    process(request, repository, communicator),
 				    requests,
@@ -11,10 +11,7 @@ process_loop <- function(communicator, repository) {
 	}
 }
 
-process <- function(request, repository, communicator, ...) {
-	stopifnot(is.AssociativeArray(associations))
-	UseMethod("process")
-}
+process <- function(request, repository, communicator, ...) UseMethod("process")
 
 process.GET_Request <- function(request, repository, communicator, ...)
 	process_GET_Request(value(request), code(request),
@@ -31,7 +28,7 @@ process_POST_Request <- function(value, repository, communicator)
 process_PUT_Request <- function(value, repository, communicator)
 	UseMethod("process_PUT_Request")
 
-process_POST_REQUEST.Index <- function(value, repository, communicator) {
+process_POST_Request.Index <- function(value, repository, communicator) {
 	POST(Replier(communicator), Index(repository))
 	nodes <- c(Nodes(repository), Nodes(value))
 	identified_locations <- c(IdentifiedLocations(repository),
@@ -39,7 +36,7 @@ process_POST_REQUEST.Index <- function(value, repository, communicator) {
 	index <- Index(nodes, identified_locations)
 	Repository(index, IdentifiedEventuals(repository))
 }
-process_PUT_REQUEST.Chunk <- function(value, repository, communicator) {
+process_PUT_Request.Chunk <- function(value, repository, communicator) {
 	POST(Replier(communicator), TRUE)
 	identified_Eventuals <- IdentifiedEventuals(Identifier(value),
 						    resolved_promise(value))
