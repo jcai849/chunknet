@@ -1,7 +1,8 @@
 Location <- function(x, ...) UseMethod("Location")
 Location.character <- function(x, port, ...) {
         stopifnot(is.integer(port))
-        structure(list(host=x, port=port), class="Location")
+        location <- list(host=x, port=port)
+        structure(location, class=c(class(x), "Location"))
 }
 is.Location <- function(x) inherits(x, "Location")
 host <- function(x) x$host
@@ -30,7 +31,8 @@ Location.Endpoint <- function(x, ...) {
         address <- get.last.endpoint(x)
         re <- ".*://(.+):([[:digit:]]+).*"
         location_marshall <- regmatches(address, regexec(re, address))[[1]]
-	location <- Location(host=location_marshall[2],
+        stopifnot(length(location_marshall) == 3)
+	location <- Location(x=location_marshall[2],
 			     port=as.integer(location_marshall[3]))
 	structure(location,
 		  class=c(paste0(class(x), "Location"), class(location)))
@@ -77,8 +79,8 @@ Nodes.Node <- function(...) {
 	stopifnot(!length(nodes) || sapply(nodes, is.Node))
 	structure(nodes, class=c("Nodes", class(nodes)))
 }
-ReplierLocation.Nodes <- function(x, ...) lapply(x, ReplierLocation)
-PublisherLocation.Nodes <- function(x, ...) lapply(x, PublisherLocation)
+ReplierLocation.Nodes <- function(x, ...) lapply(x, "ReplierLocation.Node")
+PublisherLocation.Nodes <- function(x, ...) lapply(x, "PublisherLocation.Node")
 Node.Communicator <- function(x, ...) {
     Node(ReplierLocation(x), PublisherLocation(x))
 }

@@ -21,7 +21,8 @@ print.Endpoint <- function(x, ...) cat("Endpoint: ", format(x), "\n")
 
 Binder <- function(x, ...) UseMethod("Binder")
 Binder.Location <- function(x, context, type, ...) {
-	binder <- Endpoint(context, type=type, ...)
+	binder <- if (missing(context))
+            Endpoint(type) else Endpoint(context, type=type, ...)
 	bind.socket(binder, as.character(x))
 	structure(binder, class=c("Binder", class(binder)))
 }
@@ -32,7 +33,8 @@ print.Binder <- function(x, ...) {
 }
 Connector <- function(x, ...) UseMethod("Connector")
 Connector.Location <- function(x, context, type, ...) {
-	connector <- Endpoint(context, type=type, ...)
+	connector <- if (missing(context))
+        	Endpoint(type) else Endpoint(context, type=type, ...)
 	connect.socket(connector, x)
 	structure(connector, class=c("Connector", class(connector)))
 }
@@ -50,7 +52,7 @@ print.Connector <- function(x, ...) {
 	NextMethod()
 }
 read <- function(x, ...) UseMethod("read")
-read.Endpoint <- function(x) {
+read.Endpoint <- function(x, ...) {
 	request <- receive.socket(x, ...)
 	stopifnot(is.Request(request))
 	request

@@ -31,6 +31,7 @@ print.Data <- function(x, ...) {
 	NextMethod()
 }
 
+value <- function(x, ...) UseMethod("value")
 Computation <- function(data, input, output) {
 	stopifnot(is.Chunks(input),
 	          is.Data(data),
