@@ -19,7 +19,7 @@ Chunks <- function(...) {
 Data <- function(chunk, value) {
 	stopifnot(is.Chunk(chunk))
 	data <- list(chunk=chunk, value=value)
-	structure(data, class=c("Data", class(data)))
+	structure(data, class=c("Data", "Chunk", class(data)))
 }
 is.Data <- function(data) inherits(data, "Data")
 Chunk.Data <- function(x, ...) x$chunk
@@ -39,7 +39,7 @@ Computation <- function(data, input, output) {
 		  is.function(value(data)),
 		  is.Identifier(output))
 	computation <- list(data=data, input=input, output=output)
-	structure(computation, class=c("Computation", class(computation)))
+	structure(computation, class=c("Computation", "Chunk", class(computation)))
 }
 is.Computation <- function(computation) inherits(computation, "Computation")
 Data.Computation <- function(x, ...) x$data
@@ -58,15 +58,27 @@ IdentifiedEventuals <- function(x, ...) {
 		IdentifiedEventuals.Identifier()
 	} else UseMethod("IdentifiedEventuals")
 }
+IdentifiedEventuals.AssociativeArray <- function(x, ...) {
+    stopifnot(!length(keys(x)) || sapply(mget(keys(x), x), is.promise))
+    structure(x, class=c("IdentifiedEventuals", class(x)))
+}
 IdentifiedEventuals.Identifier <- function(x, eventual) {
 	stopifnot(missing(eventual) || is.promise(eventual))
 	identified_eventuals <- if (missing(x)) {
 		AssociativeArray()
 	} else AssociativeArray(x, eventual)
-	structure(identified_eventuals,
-		  class=c("IdentifiedEventuals", class(identified_eventuals)))
+	IdentifiedEventuals(identified_eventuals)
 }
 is.IdentifiedEventuals <- function(x) inherits(x, "IdentifiedEventuals")
+merge.IdentifiedEventuals <- function(x, y, ...) merge_identified_eventuals(x, y, ...)
+merge_identified_eventuals <- function(x, y, ...) UseMethod("merge_identified_eventuals", y)
+merge_identified_eventuals.IdentifiedEventuals <- function(x, y, ...) {
+    identified_eventuals <- merge.AssociativeArray(x, y, ...)
+    IdentifiedEventuals(identified_eventuals)
+}
+merge_identified_eventuals.Repository <- function(x, y, ...) {
+    Repository(Index(y), merge(x, IdentifiedEventuals(y)))
+}
 
 distributed.do.call <- function(what, args, quote = FALSE, envir = parent.frame) {
 	# convert non-distributed args to Data and PUT, POST computation, return chunk

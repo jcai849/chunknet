@@ -18,7 +18,9 @@ AssociativeArray <- function(key, value) {
 }
 
 is.AssociativeArray <- function(x) inherits(x, "AssociativeArray")
-c.AssociativeArray <- function(x, y, ...) {
+merge.AssociativeArray <- function(x, y, ...) merge_associative_array(x, y, ...)
+merge_associative_array <- function(x, y, ...) UseMethod("merge_associative_array", y)
+merge_associative_array.AssociativeArray <- function(x, y, conflict_fun, ...) {
 	stopifnot(is.AssociativeArray(x),
 		  is.AssociativeArray(y))
 	 x_keys <- ls(x)
@@ -28,7 +30,7 @@ c.AssociativeArray <- function(x, y, ...) {
 	 intersecting_keys <- intersect(x_keys, y_keys)
 	 combined_intersections <-
             if (!length(intersecting_keys)) {
-                NULL } else mapply(c,
+                NULL } else mapply(conflict_fun,
                                    x_values[intersecting_keys],
                                    y_values[intersecting_keys],
                                    SIMPLIFY=FALSE)

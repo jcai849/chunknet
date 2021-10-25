@@ -30,19 +30,14 @@ process_PUT_Request <- function(value, repository, communicator)
 
 process_POST_Request.Index <- function(value, repository, communicator) {
 	POST(Replier(communicator), Index(repository))
-	nodes <- c(Nodes(repository), Nodes(value))
-	identified_locations <- c(IdentifiedLocations(repository),
-				  IdentifiedLocations(value))
-	index <- Index(nodes, identified_locations)
-	Repository(index, IdentifiedEventuals(repository))
+        merge(value, repository)
 }
 process_PUT_Request.Chunk <- function(value, repository, communicator) {
 	POST(Replier(communicator), TRUE)
-	identified_Eventuals <- IdentifiedEventuals(Identifier(value),
-						    resolved_promise(value))
-	Repository(Index(repository), identified_eventuals)
+	new_identified_eventual <- IdentifiedEventuals(Identifier(value),
+	                                                promise_resolve(value))
+	merge(new_identified_eventual, repository)
 }
-
 
 ### OLD
 process.list <- function(x, associations) {

@@ -60,11 +60,11 @@ read.Endpoint <- function(x, ...) {
 
 Replier <- function(x, ...) UseMethod("Replier")
 Requester <- function(x, ...) {
-	if (missing(x)) Requester.Context() else UseMethod("Requester")
+	if (missing(x)) Requester(Context()) else UseMethod("Requester")
 }
 Publisher <- function(x, ...) UseMethod("Publisher")
 Subscriber <- function(x, ...) {
-	if (missing(x)) Subscriber.Context() else UseMethod("Subscriber")
+	if (missing(x)) Subscriber(Context()) else UseMethod("Subscriber")
 }
 Replier.Location <- function(x, context, ...) {
 	replier <- Binder(x, context=context, type="ZMQ_REP", ...)

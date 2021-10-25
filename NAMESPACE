@@ -1,4 +1,6 @@
 importFrom("parallel", "mcparallel")
+importFrom("promises", "promise_resolve")
+importFrom("promises", "is.promise")
 importFrom("rzmq", "bind.socket")
 importFrom("rzmq", "connect.socket")
 importFrom("rzmq", "disconnect.socket")

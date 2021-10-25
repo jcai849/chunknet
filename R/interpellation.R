@@ -61,8 +61,8 @@ POST <- function(endpoint, payload) {
 	send.socket(endpoint, POST_Request(payload))
 }
 GET <- function(endpoint, get_payload) {
-	send.socket(endpoint, GET_Request(payload))
+	send.socket(endpoint, GET_Request(get_payload))
 }
-PUT <- function(endpoint, get_payload) {
+PUT <- function(endpoint, payload) {
 	send.socket(endpoint, PUT_Request(payload))
 }

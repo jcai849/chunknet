@@ -59,8 +59,8 @@ IdentifiedLocations.Identifier <- function(x, location) {
         IdentifiedLocations(identified_locations)
 }
 is.IdentifiedLocations <- function(x) inherits(x, "IdentifiedLocations")
-c.IdentifiedLocations <- function(...) {
-    identified_locations <- c.AssociativeArray(...)
+merge.IdentifiedLocations <- function(x, y, ...) {
+    identified_locations <- merge.AssociativeArray(x, y, ...)
     IdentifiedLocations(identified_locations)
 }
 
@@ -83,6 +83,7 @@ print.Node <- function(x, ...)
 	    paste0(' ', capture.output(print(PublisherLocation(x)))),
 	    sep="\n")
 c.Node <- function(...) {
+    stopifnot(sapply(list(...), is.Node))
     Nodes(...)
 }
 
@@ -92,9 +93,11 @@ Nodes.Node <- function(...) {
 	stopifnot(!length(nodes) || sapply(nodes, is.Node))
 	structure(nodes, class=c("Nodes", class(nodes)))
 }
+is.Nodes <- function(x) inherits(x, "Nodes")
 ReplierLocation.Nodes <- function(x, ...) lapply(x, "ReplierLocation.Node")
 PublisherLocation.Nodes <- function(x, ...) lapply(x, "PublisherLocation.Node")
 c.Nodes <- function(...) {
+    stopifnot(sapply(list(...), is.Nodes))
     do.call(Nodes, unlist(list(...), recursive=FALSE))
 }
 
@@ -118,3 +121,13 @@ Nodes.Index <- function(...) ..1$nodes
 IdentifiedLocations.Index <- function(x, ...) x$identified_locations
 ReplierLocation.Index <- function(x, ...) ReplierLocation(Nodes(x))
 PublisherLocation.Index <- function(x, ...) PublisherLocation(Nodes(x))
+merge.Index <- function(x, y, ...) merge_index(x, y, ...)
+merge_index <- function(x, y, ...) UseMethod("merge_index", y)
+merge_index.Index <- function(x, y, ...){
+    nodes <- c(Nodes(x), Nodes(y))
+    identified_locations <- merge(IdentifiedLocations(x), IdentifiedLocations(y))
+    Index(nodes, identified_locations=identified_locations)
+}
+merge_index.Repository <- function(x, y) {
+    Repository(merge(x, Index(y)), IdentifiedEventuals(y))
+}
