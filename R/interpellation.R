@@ -13,7 +13,7 @@ GET_Payload <- function(x, what, return_address, ...) {
 	stopifnot(is.character(what),
 	          is.character(return_address))
 	get_payload <- list(value=x, what=what, return_address=return_address)
-	structure(get_payload, class=c("GET_Payload", class(get_payload)))
+	structure(get_payload, class=c("GET_Payload", "Payload", class(get_payload)))
 }
 what <- function(x, ...) UseMethod("what")
 what.GET_Payload <- function(x, ...) x$what

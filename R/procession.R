@@ -21,11 +21,11 @@ process.POST_Request <- function(request, repository, communicator, ...)
 process.PUT_Request <- function(request, repository, communicator, ...)
 	process_PUT_Request(value(request), repository, communicator, ...)
 
-process_GET_Request <- function(identifier, how, repository, communicator)
+process_GET_Request <- function(identifier, what, return_address, repository, communicator, ...)
 	UseMethod("process_GET_Request")
-process_POST_Request <- function(value, repository, communicator)
+process_POST_Request <- function(value, repository, communicator, ...)
 	UseMethod("process_POST_Request")
-process_PUT_Request <- function(value, repository, communicator)
+process_PUT_Request <- function(value, repository, communicator, ...)
 	UseMethod("process_PUT_Request")
 
 process_POST_Request.Index <- function(value, repository, communicator, ...) {
@@ -38,11 +38,12 @@ process_PUT_Request.Chunk <- function(value, repository, communicator, ...) {
 	                                                promise_resolve(value))
 	merge(new_identified_eventual, repository)
 }
-process_GET_Request.Identifier <- function(value, what, return_address, repository, communicator, ...) {
+process_GET_Request.Identifier <- function(identifier, what, return_address, repository, communicator, ...) {
     eventual <- switch(what,
-                       value=get(value, IdentifiedEventuals(repository)),
-                       location=get(value, IdentifiedLocations(repository)))
+                       value=get(identifier, envir=IdentifiedEventuals(repository)),
+                       location=get(identifier, envir=IdentifiedLocations(repository)))
     force(return_address)
+    browser()
     callback <- function(value) {
         oplan <- plan("multicore")
         on.exit(plan(oplan), add = TRUE)
@@ -57,7 +58,8 @@ process_GET_Request.Identifier <- function(value, what, return_address, reposito
     }
     if (what=="value"){
         new_promise <- then(eventual, onFulfilled = callback)
-        merge(IdentifiedEventual(Identifier(value), new_promise), repository)
+        merge(IdentifiedEventuals(identifier, new_promise), repository,
+              conflict_fun=function(x, y) x)
     } else repository
 }
 

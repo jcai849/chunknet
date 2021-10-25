@@ -77,7 +77,7 @@ merge_identified_eventuals.IdentifiedEventuals <- function(x, y, ...) {
     IdentifiedEventuals(identified_eventuals)
 }
 merge_identified_eventuals.Repository <- function(x, y, ...) {
-    Repository(Index(y), merge(x, IdentifiedEventuals(y)))
+    Repository(Index(y), merge(x, IdentifiedEventuals(y), ...))
 }
 
 distributed.do.call <- function(what, args, quote = FALSE, envir = parent.frame) {
