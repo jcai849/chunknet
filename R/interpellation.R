@@ -5,21 +5,20 @@ Payload.default <- function(x, ...) {
 }
 is.Payload <- function(x) inherits(x, "Payload")
 value.Payload <- function(x, ...) x$value
-print.Payload <- function(x, ...) 
+print.Payload <- function(x, ...)
 	cat("Payload Value:", paste0(' ', capture.output(str(value(x)))),
 	    sep="\n")
 
-GET_Payload <- function(value, code) {
-	stopifnot(is.function(code))
-	get_payload <- list(value=value, code=code)
+GET_Payload <- function(x, what, return_address, ...) {
+	stopifnot(is.character(what),
+	          is.character(return_address))
+	get_payload <- list(value=x, what=what, return_address=return_address)
 	structure(get_payload, class=c("GET_Payload", class(get_payload)))
 }
-code.GET_Payload <- function(x, ...) x$code
-print.GET_Payload <- function(x, ...) {
-	NextMethod()
-	cat("Payload Code:", paste0(' ', capture.output(str(code(x)))),
-	    sep="\n")
-}
+what <- function(x, ...) UseMethod("what")
+what.GET_Payload <- function(x, ...) x$what
+return_address <- function(x, ...) UseMethod("return_address")
+return_address.GET_Payload <- function(x, ...) x$return_address
 
 Header <- function(x, ...) UseMethod("Header")
 Header.character <- function(x, ...) {
@@ -32,7 +31,7 @@ print.Header <- function(x, ...) {
 
 Request <- function(header, payload) {
 		stopifnot(is.Header(header), is.Payload(payload))
-		request <- list(header=header, payload=payload) 
+		request <- list(header=header, payload=payload)
 		structure(request, class=c(paste0(header, "_Request"), "Request", class(request)))
 }
 is.Request <- function(x) inherits(x, "Request")
@@ -44,11 +43,12 @@ print.Request <- function(x, ...)
 	    paste0(' ', capture.output(print(Payload(x)))))
 value.Request <- function(x, ...) value(Payload(x))
 
-GET_Request <- function(x, code) {
-	stopifnot(is.Identifier(x), is.function(code))
-	Request(Header("GET"), GET_Payload(x, code))
+GET_Request <- function(x, what, return_address) {
+	stopifnot(is.Identifier(x))
+	Request(Header("GET"), GET_Payload(x, what, return_address))
 }
-code.GET_Request <- function(x, ...) code(Payload(x))
+what.GET_Request <- function(x, ...) what(Payload(x))
+return_address.GET_Request <- function(x, ...) return_address(Payload(x))
 POST_Request <- function(x) {
 	Request(Header("POST"), Payload(x))
 }
@@ -60,8 +60,8 @@ PUT_Request <- function(x) {
 POST <- function(endpoint, payload) {
 	send.socket(endpoint, POST_Request(payload))
 }
-GET <- function(endpoint, get_payload) {
-	send.socket(endpoint, GET_Request(get_payload))
+GET <- function(endpoint, identifier, what, return_address) {
+	send.socket(endpoint, GET_Request(identifier, what, return_address))
 }
 PUT <- function(endpoint, payload) {
 	send.socket(endpoint, PUT_Request(payload))

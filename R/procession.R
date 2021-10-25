@@ -14,7 +14,7 @@ process_loop <- function(communicator, repository) {
 process <- function(request, repository, communicator, ...) UseMethod("process")
 
 process.GET_Request <- function(request, repository, communicator, ...)
-	process_GET_Request(value(request), code(request),
+	process_GET_Request(value(request), what(request), return_address(request),
 			    repository, communicator, ...)
 process.POST_Request <- function(request, repository, communicator, ...)
 	process_POST_Request(value(request), repository, communicator, ...)
@@ -28,15 +28,37 @@ process_POST_Request <- function(value, repository, communicator)
 process_PUT_Request <- function(value, repository, communicator)
 	UseMethod("process_PUT_Request")
 
-process_POST_Request.Index <- function(value, repository, communicator) {
+process_POST_Request.Index <- function(value, repository, communicator, ...) {
 	POST(Replier(communicator), Index(repository))
         merge(value, repository)
 }
-process_PUT_Request.Chunk <- function(value, repository, communicator) {
+process_PUT_Request.Chunk <- function(value, repository, communicator, ...) {
 	POST(Replier(communicator), TRUE)
 	new_identified_eventual <- IdentifiedEventuals(Identifier(value),
 	                                                promise_resolve(value))
 	merge(new_identified_eventual, repository)
+}
+process_GET_Request.Identifier <- function(value, what, return_address, repository, communicator, ...) {
+    eventual <- switch(what,
+                       value=get(value, IdentifiedEventuals(repository)),
+                       location=get(value, IdentifiedLocations(repository)))
+    force(return_address)
+    callback <- function(value) {
+        oplan <- plan("multicore")
+        on.exit(plan(oplan), add = TRUE)
+        future_promise({
+            context <- rzmq::init.context()
+            requester <- rzmq::init.socket(context, "ZMQ_REQ")
+            rzmq::connect.socket(requester, return_address)
+            rzmq::send.socket(requester, value)
+            value
+            },
+           globals=list(return_address=return_address))
+    }
+    if (what=="value"){
+        new_promise <- then(eventual, onFulfilled = callback)
+        merge(IdentifiedEventual(Identifier(value), new_promise), repository)
+    } else repository
 }
 
 ### OLD
