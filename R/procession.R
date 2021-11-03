@@ -43,21 +43,21 @@ process_GET_Request.Identifier <- function(identifier, what, return_address, rep
                        value=get(identifier, envir=IdentifiedEventuals(repository)),
                        location=get(identifier, envir=IdentifiedLocations(repository)))
     force(return_address)
-    browser()
     callback <- function(value) {
-        oplan <- plan("multicore")
-        on.exit(plan(oplan), add = TRUE)
-        future_promise({
+        # oplan <- plan("multicore")
+        # on.exit(plan(oplan), add = TRUE)
+        # future_promise({
             context <- rzmq::init.context()
             requester <- rzmq::init.socket(context, "ZMQ_REQ")
             rzmq::connect.socket(requester, return_address)
             rzmq::send.socket(requester, value)
             value
-            },
-           globals=list(return_address=return_address))
+       #  },
+       # globals=list(return_address=return_address))
     }
     if (what=="value"){
         new_promise <- then(eventual, onFulfilled = callback)
+        browser()
         merge(IdentifiedEventuals(identifier, new_promise), repository,
               conflict_fun=function(x, y) x)
     } else repository

@@ -28,7 +28,6 @@ Identifier.Data <- function(x, ...) Identifier(Chunk(x))
 generator.Data <- function(x, ...) generator(Chunk(x))
 print.Data <- function(x, ...) {
 	cat("Data: value:", capture.output(str(value(x))))
-	NextMethod()
 }
 
 value <- function(x, ...) UseMethod("value")
