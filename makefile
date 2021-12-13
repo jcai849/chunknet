@@ -2,7 +2,7 @@
 package: /usr/local/lib/R/library/largerscale/
 /usr/local/lib/R/library/largerscale/: R/* NAMESPACE DESCRIPTION
 	R CMD INSTALL .
-rmd: 
+rmd:
 .Rmd.html:
 	Rscript -e "rmarkdown::render('$<', 'html_document')"
 	cp "$@" ~/Downloads
