@@ -1,19 +1,3 @@
-comms <- (function() {
-    init_comms <- function(port) {
-        context <- init.context()
-        Replier <<- init.socket(context, "ZMQ_REP")
-        bind.socket(replier, paste0("tcp://127.0.0.1:", port))
-        Requester <<- init.socket(context, "ZMQ_REQ")
-    }
-    list(init_comms = init_comms,
-         Replier = function() Replier,
-         Requester = function() Requester)
-})()
-
-init_comms <- comms$init_comms
-Replier <- comms$Replier
-Requester <- comms$Requester
-
 node <- function(port) {
     init_comms(port)
     repeat {
@@ -29,29 +13,30 @@ next_event <- function() {
     }
     return(event)
 }
-
-parse <- base::identity # (HTTP later)
-
-handle <- function(callback, context) {
-    callback(context)
-}
-
-DataStore <- new.env(parent=emptyenv())
-Stage <- new.env(parent=emptyenv())
-EventQueue <- new.env(paren=emptyenv())
-
 next_internal_event <- function() {
-        event <- EventQueue$queue[[1]]
-        EventQueue$queue <- EventQueue[-1]
+        event <- Events$queue[[1]]
+        Events$queue <- Events$queue[-1]
         event
 }
+emit <- function(callback, context) {
+    request <- new.env(parent=emptyenv())
+    request$callback <- callback
+    request$context <- context
+    Events$queue <- c(Events$queue, request)
+}
 next_external_event <- function() {
+    # TODO: poll on clients and servers as well as main listener
     receive.socket(Replier)
 }
-emit <- function(callback, context)
-    EventQueue$queue <- c(EventQueue$queue, list(callback=callback, context=context))
 
-prerequisites <- function(x) x$prereqs
+parse <- function(input) {
+    switch(input$header,
+           "PUT /data" = list(callback=putData, context=input$payload),
+           "PUT /computation" = list(callback=putComputation, context=input$payload),
+           "GET /data" =  list(callback=getData, context=input$payload))
+}
+handle <- function(callback, context)
+    callback(context)
 search <- function(collection, key, ...)
     key %in% names(collection)
 
@@ -64,9 +49,9 @@ stage <- function(input, prereqs) {
         compCoutnDown$remaining_prereqs <- length(prereqs)
 
         for (prereq in prereqs) {
-            already_staged <- search(Stage, href(prereq))
-            assign(href(prereq),
-                   if (already_staged) c(get(href(prereq), Stage), compCountDown) else list(compCountDown),
+            already_staged <- search(Stage, prereq$href)
+            assign(prereq$href,
+                   if (already_staged) c(get(prereq$href, Stage), compCountDown) else list(compCountDown),
                    Stage)
         }
     }
@@ -74,18 +59,31 @@ stage <- function(input, prereqs) {
 
 # callbacks
 
+putData <- function(data) {
+    send.socket(Replier, "204")
+    newData(data)
+}
+putComputation <- function(computation) {
+    send.socket(Replier, "204")
+    newComputation(computation)
+}
+getData <- function(whatwhere) {
+    send.socket(Replier, get(whatwhere$what, Store))
+}
+
 newData <- function(data) {
-    assign(data$href, data, DataStore)
+    assign(data$href, data, Store)
     if (search(Stage, data$href))
         emit(prereqAvailable, data$href)
+  # TODO: if (some client wanting this data) send(data, to_client); remove from clientelle
 }
 newComputation <- function(computation) {
-    stage(computation, prerequisites(computation))
-    avail <- search(DataStore, prerequisites(computation))
-    for (prereq in prerequisites(computation)[avail])
-        emit(prereqAvailable, href(prereq))
-    for (prereq in prerequisites(computation)[!avail])
-        nonblocking_emerge(href(prereq))
+    stage(computation, computation$prereqs)
+    avail <- search(Store, computation$prereqs)
+    for (prereq in computation$prereqs[avail])
+        emit(prereqAvailable, prereq$href)
+    for (prereq in computation$prereqs[!avail])
+        pull_async(prereq$href)
 }
 prereqAvailable <- function(prereq_href) {
     if (!search(Stage, prereq_href)) return(NULL)
@@ -100,26 +98,74 @@ prereqAvailable <- function(prereq_href) {
     if (pendingComps == list()) rm(prereq_href, Stage)
 }
 computationReady <- function(computation) {
-    prereqs <- lapply(sapply(prerequisites(computation), href), get, DataStore)
+    prereqs <- lapply(sapply(computation$prereqs, '$', href),
+                      function(x) get(x, Store)$value)
     result <- do.call(computation$computation, prereqs)
+    emit(newData, result)
     broadcast(computation)
-    assign(computation$result$href, result, DataStore)
-}
-getData <- function(whatwhere) {
-    send(get(whatwhere$what, DataStore), whatwhere$where)
 }
 
 # client-requests
 
-push <- function(x, location) {
-    getUUID()
-    list("PUT .../data", x)
-    send.socket()
-    receive.socket()
+push_async <- function(value, location) {
+    # TODO: replace location argument with location service
+    data <- list(generator_href= ".", value=value, href=getUUID())
+    sock <- init.socket(Context, "ZMQ_REQ")
+    connect.socket(sock, location)
+    send.socket(sock, list(header="PUT /data", payload=data))
+    # TODO: Add to clients list to poll on if available
+    sock
+}
+push_sync <- function(value, location) {
+    sock <- push_async(value, location)
+    data <- receive.socket(sock)
+    disconnect.socket(sock)
+    data
 
 }
-remote_call <- function(function, arguments, location) {
+remote_call <- function(procedure, arguments, location) {
     arguments <- lapply(arguments, push)
-    list("PUT .../computation", computation(function, arguments))
-    send.socket()
+    computation <- list(procedure=procedure, arguments=arguments, alignments=NULL)
+    sock <- init.socket(Context, "ZMQ_REQ")
+    connect.socket(sock, location)
+    send.socket(sock, list(header="PUT /computation", payload=computation))
+    receive.socket()
+    disconnect.socket(sock)
 }
+pull_async <- function(href, location) {
+    # TODO: replace location argument with location service
+    # TODO: if value apparently missing, try to recover the data through its generating computation
+    sock <- init.socket(Context, "ZMQ_REQ")
+    connect.socket(sock, location)
+    send.socket(sock, list(header="GET /data", payload=href))
+    # TODO: add to servers list to poll on if available
+    sock
+}
+pull_sync <- function(href, location) {
+    sock <- pull_async(href, location)
+    data <- receive.socket()
+    disconnect.socket(sock)
+    data
+}
+
+# globals
+
+Store <- new.env(parent=emptyenv())
+Stage <- new.env(parent=emptyenv())
+Events <- new.env(parent=emptyenv())
+Audience <- new.env(parent=emptyenv())
+
+comms <- (function() {
+    Context <- init.context()
+    Replier <- init.socket(Context, "ZMQ_REP")
+    init_comms <- function(port)
+        bind.socket(Replier, paste0("tcp://127.0.0.1:", port))
+    list(init_comms = init_comms,
+         Replier = Replier,
+         Context = Context)
+})()
+
+init_comms <- comms$init_comms
+Context <- comms$Context
+Replier <- comms$Replier
+broadcast <- base::identity
