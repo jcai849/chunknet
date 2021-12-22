@@ -1,3 +1,7 @@
+queue <- function() .Call(C_queue)
+push <- function(queue, item) .Call(C_push, queue, item)
+pop <- function(queue) .Call(C_pop, queue)
+
 node <- function(port) {
     init_comms(port)
     repeat {
@@ -154,18 +158,3 @@ Store <- new.env(parent=emptyenv())
 Stage <- new.env(parent=emptyenv())
 Events <- new.env(parent=emptyenv())
 Audience <- new.env(parent=emptyenv())
-
-comms <- (function() {
-    Context <- init.context()
-    Replier <- init.socket(Context, "ZMQ_REP")
-    init_comms <- function(port)
-        bind.socket(Replier, paste0("tcp://127.0.0.1:", port))
-    list(init_comms = init_comms,
-         Replier = Replier,
-         Context = Context)
-})()
-
-init_comms <- comms$init_comms
-Context <- comms$Context
-Replier <- comms$Replier
-broadcast <- base::identity
