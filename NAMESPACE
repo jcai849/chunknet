@@ -1,4 +1,6 @@
 useDynLib(largerscale,
-          C_queue, C_push, C_pop)
+          C_queue, C_push, C_pop,
+          C_send, C_receive)
 importFrom("uuid", "UUIDgenerate")
 export(queue, push, pop)
+export(send, receive)

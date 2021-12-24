@@ -11,7 +11,7 @@
 #define MAX_SEND_SIZE (1024*1024*128)
 #define BACKLOG 10
 
-SEXP receive_sexp(SEXP port)
+SEXP C_receive(SEXP port)
 {
     struct sockaddr_storage client_addr;
     socklen_t addr_size;
@@ -82,7 +82,7 @@ SEXP receive_sexp(SEXP port)
     return out;
 }
 
-SEXP send_sexp(SEXP value, SEXP where, SEXP port)
+SEXP C_send(SEXP value, SEXP where, SEXP port)
 {
     struct addrinfo hints, *res;
     int addr_error, retcode;

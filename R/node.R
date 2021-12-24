@@ -1,6 +1,14 @@
 queue <- function() .Call(C_queue)
 push <- function(queue, item) .Call(C_push, queue, item)
 pop <- function(queue) .Call(C_pop, queue)
+send <- function(value, where, port) {
+    stopifnot(is.character(where), is.character(port))
+    .Call(C_send, value, where, port)
+}
+receive <- function(port) {
+    stopifnot(is.character(port))
+    .Call(C_receive, port)
+}
 
 node <- function(port) {
     init_comms(port)
