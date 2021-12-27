@@ -1,13 +1,28 @@
 queue <- function() .Call(C_queue)
 push <- function(queue, item) .Call(C_push, queue, item)
 pop <- function(queue) .Call(C_pop, queue)
-send <- function(value, where, port) {
-    stopifnot(is.character(where), is.character(port))
-    .Call(C_send, value, where, port)
+send <- function(x, ...) UseMethod("send")
+receive <- function(x, ...) UseMethod("receive")
+send.character <- function(x, port, value, ...) {
+    stopifnot(is.integer(port))
+    value <- serialize(value, NULL)
+    port <- as.character(port)
+    sock <- .Call(C_send_loc, x, port, value)
+    sock
 }
-receive <- function(port) {
-    stopifnot(is.character(port))
-    .Call(C_receive, port)
+send.Socket <- function(x, value, ...) {
+    value <- serialize(value, NULL)
+    .Call(C_send_sock, x, value)
+}
+receive.Socket <- function(x, ...) {
+    unserialize(.Call(C_receive_sock, x))
+}
+receive.integer <- function(x, ...) {
+    port <- as.character(x)
+    recvd <- .Call(C_receive_loc, port)
+    names(recvd) <- c("Socket", "Value")
+    recvd[[2]] <- unserialize(recvd[[2]])
+    recvd
 }
 
 node <- function(port) {

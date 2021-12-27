@@ -11,42 +11,28 @@
 #define MAX_SEND_SIZE (1024*1024*128)
 #define BACKLOG 10
 
-SEXP C_receive(SEXP port)
+SEXP C_as_socket(int fd)
 {
-    struct sockaddr_storage client_addr;
-    socklen_t addr_size;
-    struct addrinfo hints, *res;
-    int addr_error;
-    int sockfd, client_fd;
+    SEXP sock, class;
+
+    sock = PROTECT(allocVector(INTSXP, 1));
+    INTEGER(sock)[0] = fd;
+    class = PROTECT(allocVector(STRSXP, 1));
+    SET_STRING_ELT(class, 0, mkChar("Socket"));
+    classgets(sock, class);
+    UNPROTECT(2);
+    return sock;
+}
+
+SEXP C_receive_sock(SEXP sock)
+{
+    int sockfd;
     unsigned int len = 0, i = 0;
     unsigned char *payload;
     int n, need;
     SEXP out;
 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_flags = AI_PASSIVE;
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    addr_error = getaddrinfo(NULL, CHAR(STRING_ELT(port, 0)), &hints, &res);
-    if (addr_error)
-        Rf_error("%s\n", gai_strerror(addr_error));
-    sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (sockfd == -1)
-        Rf_error("%s\n", strerror(errno));
-    if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
-        Rf_error("%s\n", strerror(errno));
-        close(sockfd);
-    }
-    if (sockfd == 0)
-        Rf_error("%s\n", strerror(errno));
-    freeaddrinfo(res);
-    (void) listen(sockfd, BACKLOG);
-    addr_size = sizeof client_addr;
-    client_fd = accept(sockfd, (struct sockaddr *) &client_addr, &addr_size);
-    if (client_fd == -1)
-        Rf_error("%s\n", strerror(errno));
-
+    sockfd = INTEGER(sock)[0];
     n = recv(sockfd, &len, sizeof len, 0);
 #ifdef LARGERSCALE_DEBUG
     Rprintf("Receiving %d bytes from descriptor %d...\n", len, sockfd);
@@ -82,27 +68,56 @@ SEXP C_receive(SEXP port)
     return out;
 }
 
-SEXP C_send(SEXP value, SEXP where, SEXP port)
+SEXP C_receive_loc(SEXP port)
 {
+    struct sockaddr_storage client_addr;
+    socklen_t addr_size;
     struct addrinfo hints, *res;
-    int addr_error, retcode;
-    int sockfd;
-    SEXP fd;
-    int need, n;
-    unsigned int len = 0, i = 0;
-    unsigned char *payload;
+    int addr_error;
+    int sockfd, client_fd;
+    SEXP fd, val, out;
 
+    memset(&hints, 0, sizeof hints);
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
 
-    addr_error = getaddrinfo(CHAR(STRING_ELT(where, 0)), CHAR(STRING_ELT(port, 0)), &hints, &res);
+    addr_error = getaddrinfo(NULL, CHAR(STRING_ELT(port, 0)), &hints, &res);
     if (addr_error)
         Rf_error("%s\n", gai_strerror(addr_error));
     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (sockfd == -1)
         Rf_error("%s\n", strerror(errno));
-    retcode = connect(sockfd, res->ai_addr, res->ai_addrlen);
-    if (retcode == -1)
+    if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+        Rf_error("%s\n", strerror(errno));
+        close(sockfd);
+    }
+    if (sockfd == 0)
+        Rf_error("%s\n", strerror(errno));
+    freeaddrinfo(res);
+    (void) listen(sockfd, BACKLOG);
+    addr_size = sizeof client_addr;
+    client_fd = accept(sockfd, (struct sockaddr *) &client_addr, &addr_size);
+    if (client_fd == -1)
         Rf_error("%s\n", strerror(errno));
 
+    fd = PROTECT(C_as_socket(client_fd));
+    val = PROTECT(C_receive_sock(fd));
+    out = PROTECT(allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(out, 0, fd);
+    SET_VECTOR_ELT(out, 1, val);
+    UNPROTECT(3);
+    return out;
+}
+
+SEXP C_send_sock(SEXP sock, SEXP value)
+{
+    unsigned int len = 0, i = 0;
+    int need, n;
+    unsigned char *payload;
+    int sockfd;
+
+    sockfd = INTEGER(sock)[0];
     len = LENGTH(value);
     payload = RAW(value);
 #ifdef LARGERSCALE_DEBUG
@@ -124,8 +139,33 @@ SEXP C_send(SEXP value, SEXP where, SEXP port)
         }
         i += n;
     }
+    return ScalarLogical(1);
+}
 
-    fd = allocVector(INTSXP, 1);
-    INTEGER(fd)[0] = sockfd;
+SEXP C_send_loc(SEXP where, SEXP port, SEXP value)
+{
+    struct addrinfo hints, *res;
+    int addr_error, retcode;
+    int sockfd;
+    SEXP fd;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_NUMERICSERV;
+    addr_error = getaddrinfo(CHAR(STRING_ELT(where, 0)), CHAR(STRING_ELT(port, 0)), &hints, &res);
+    if (addr_error)
+        Rf_error("%s\n", gai_strerror(addr_error));
+    sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (sockfd == -1)
+        Rf_error("%s\n", strerror(errno));
+    retcode = connect(sockfd, res->ai_addr, res->ai_addrlen);
+    if (retcode == -1)
+        Rf_error("%s\n", strerror(errno));
+
+    fd = PROTECT(C_as_socket(sockfd));
+    C_send_sock(fd, value);
+    UNPROTECT(1);
+
     return fd;
 }

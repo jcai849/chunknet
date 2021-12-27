@@ -1,6 +1,10 @@
 useDynLib(largerscale,
           C_queue, C_push, C_pop,
-          C_send, C_receive)
+          C_send_sock, C_send_loc, C_receive_sock, C_receive_loc)
 importFrom("uuid", "UUIDgenerate")
 export(queue, push, pop)
 export(send, receive)
+S3method(receive, integer)
+S3method(receive, Socket)
+S3method(send, character)
+S3method(send, Socket)
