@@ -1,6 +1,6 @@
 #include <stdlib.h>
-
 #include <Rinternals.h>
+#include "queue.h"
 
 typedef struct Node_t {
     struct Node_t *next;

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <R.h>
 #include <Rinternals.h>
+#include "queue.h"
 
 #define MAX_RECV_SIZE (1024*1024*128)
 #define MAX_SEND_SIZE (1024*1024*128)
@@ -108,6 +109,83 @@ SEXP C_receive_loc(SEXP port)
     SET_VECTOR_ELT(out, 1, val);
     UNPROTECT(3);
     return out;
+}
+
+SEXP C_receive_and_enqueue(SEXP queue, SEXP port)
+{
+    struct sockaddr_storage client_addr;
+    socklen_t addr_size;
+    struct addrinfo hints, *res;
+    int addr_error;
+    int sockfd, client_fd;
+    unsigned int len = 0, i = 0;
+    unsigned char *payload;
+    int n, need;
+    SEXP payload_interface, fd_interface, out;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    addr_error = getaddrinfo(NULL, CHAR(STRING_ELT(port, 0)), &hints, &res);
+    if (addr_error)
+        Rf_error("%s\n", gai_strerror(addr_error));
+    sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (sockfd == -1)
+        Rf_error("%s\n", strerror(errno));
+    if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+        Rf_error("%s\n", strerror(errno));
+        close(sockfd);
+    }
+    if (sockfd == 0)
+        Rf_error("%s\n", strerror(errno));
+    freeaddrinfo(res);
+    (void) listen(sockfd, BACKLOG);
+    addr_size = sizeof client_addr;
+    client_fd = accept(sockfd, (struct sockaddr *) &client_addr, &addr_size);
+    if (client_fd == -1)
+        Rf_error("%s\n", strerror(errno));
+
+    n = recv(client_fd, &len, sizeof len, 0);
+#ifdef LARGERSCALE_DEBUG
+    Rprintf("Receiving %d bytes from descriptor %d...\n", len, client_fd);
+#endif
+    if (n != sizeof(len) || len == 0) {
+        close(client_fd);
+        client_fd = -1;
+        Rf_error("Header read error on descriptor %d", client_fd);
+    } else {
+        payload_interface = PROTECT(allocVector(RAWSXP, len));
+        payload = RAW(payload_interface);
+        while (i < len) {
+            need = (len - i > MAX_RECV_SIZE) ? MAX_RECV_SIZE : (len - i);
+            n = recv(client_fd, payload + i, need, 0);
+            if (n < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    R_CheckUserInterrupt();
+                    continue;
+                }
+                close(client_fd);
+                client_fd = -1;
+                Rf_error("Read error on descriptor %d: %s", client_fd, strerror(errno));
+            } else if (n == 0) {
+                close(client_fd);
+                client_fd = -1;
+                Rf_error("Connection closed on descriptor %d before all data was received", client_fd);
+            }
+            i += n;
+
+        }
+    }
+
+    fd_interface = PROTECT(C_as_socket(client_fd));
+    out = PROTECT(allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(out, 0, fd_interface);
+    SET_VECTOR_ELT(out, 1, payload_interface);
+    UNPROTECT(3);
+
+    return C_push(queue, out);
 }
 
 SEXP C_send_sock(SEXP sock, SEXP value)
