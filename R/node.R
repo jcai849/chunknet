@@ -1,83 +1,145 @@
-queue <- function() structure(.Call(C_queue), class="Queue")
-push <- function(queue, item) .Call(C_push, queue, item)
-pop <- function(queue) .Call(C_pop, queue)
-send <- function(x, ...) UseMethod("send")
-receive <- function(x, ...) UseMethod("receive")
-send.character <- function(x, port, value, ...) {
-    stopifnot(is.integer(port))
-    value <- serialize(value, NULL)
-    port <- as.character(port)
-    sock <- .Call(C_send_loc, x, port, value)
-    sock
-}
-send.Socket <- function(x, value, ...) {
-    value <- serialize(value, NULL)
-    .Call(C_send_sock, x, value)
-}
-
-receive.Socket <- function(x, ...) {
-    unserialize(.Call(C_receive_sock, x))
-}
-
-receive.integer <- function(x, ...) {
-    port <- as.character(x)
-    recvd <- .Call(C_receive_loc, port)
-    names(recvd) <- c("Socket", "Value")
-    recvd[[2]] <- unserialize(recvd[[2]])
-    recvd
-}
-
-receive.Queue <- function(x, port, ...) {
-    stopifnot(is.integer(port))
-    port <- as.character(port)
-    .Call(C_receive_and_enqueue, x, port)
-}
+# Overview
 
 node <- function(port) {
-    init_comms(port)
+    orcv::start(port)
+    PORT(port)
+    register_external_handlers()
+    register_internal_handlers()
     repeat {
-        request <- next_event()
-        handle(request$callback, request$context)
+        event <- next_event()
+        handle(event)
     }
 }
 
-next_event <- function() {
-    event <- next_internal_event()
-    if (is.null(internal_event)) {
-        event <- parse(next_external_event())
-    }
-    return(event)
+register_external_handlers <- function() {
+    on("PUT /data", putData)
+    on("PUT /computation", putComputation)
+    on("GET /data", getData)
 }
-next_internal_event <- function() {
-        event <- Events$queue[[1]]
-        Events$queue <- Events$queue[-1]
-        event
-}
-emit <- function(callback, context) {
-    request <- new.env(parent=emptyenv())
-    request$callback <- callback
-    request$context <- context
-    Events$queue <- c(Events$queue, request)
-}
-next_external_event <- function() {
-    # TODO: poll on clients and servers as well as main listener
-    receive.socket(Replier)
+register_internal_handlers <- function() {
+    on("prereqAvailable", prereqAvailable)
+    on("newComputation", newComputation)
+    on("newData", newData)
+    on("computationReady", computationReady)
 }
 
-parse <- function(input) {
-    switch(input$header,
-           "PUT /data" = list(callback=putData, context=input$payload),
-           "PUT /computation" = list(callback=putComputation, context=input$payload),
-           "GET /data" =  list(callback=getData, context=input$payload))
+on <- function(event, handler) {
+    assign(event, handler, Events)
 }
-handle <- function(callback, context)
-    callback(context)
+
+next_event <- function() orcv::event_pop()
+
+handle <- function(event) {
+    handler <- get(event$data$header, Events)
+    handler(event)
+}
+
+event_internal_push <- function(event, context) {
+    fd <- orcv::event_push(list(header=event, payload=context), "localhost", PORT())
+    orcv::event_complete(fd)
+}
+
+# handlers
+# Event {
+#	FD connection
+#	list data {
+#                  character header
+#                  (any) payload
+#                 }
+# }
+
+putData <- function(event) {
+    newData(event$data$payload)
+    # async_respond(event, "204")
+    orcv::event_complete(event)
+}
+putComputation <- function(event) {
+    newComputation(event$data$payload)
+    # async_respond(event, "204")
+    orcv::event_complete(event)
+}
+getData <- function(event) {
+    request <- event$data$payload
+    orcv::respond(event, get(request, Store))
+    orcv::event_complete(event)
+}
+
+newData <- function(data) {
+    assign(data$href, data, Store)
+    if (search(Stage, data$href))
+        event_internal_push("prereqAvailable", data$href)
+  # TODO: if (some client wanting this data) send(data, to_client); remove from clientelle
+}
+newComputation <- function(computation) {
+    stage(computation, computation$prereqs)
+    avail <- search(Store, computation$prereqs)
+    for (prereq in computation$prereqs[avail])
+        event_internal_push("prereqAvailable", prereq$href)
+    for (prereq in computation$prereqs[!avail]) {
+        # ask for locations
+        location <- NULL
+        pull_async(prereq, location)
+    }
+}
+prereqAvailable <- function(prereq_href) {
+    if (!search(Stage, prereq_href)) return(NULL)
+    pendingComps <- get(prereq_href, Stage)
+    for (i in length(pendingComps):1) {
+        compCountDown <- pendingComps[[i]]
+        compCountDown$remaining_prereqs <- compCountDown$remaining_prereqs - 1
+        if (compCountDown$remaining_prereqs == 0L)
+            event_internal_push("computationReady", compCountDown$computation)
+            pendingComps <- pendingComps[-i]
+    }
+    if (pendingComps == list()) rm(prereq_href, Stage)
+}
+computationReady <- function(computation) {
+    prereqs <- lapply(sapply(computation$prereqs, '$', href),
+                      function(x) get(x, Store)$value)
+    result <- do.call(computation$computation, prereqs)
+    event_internal_push("newData", result)
+    broadcast(computation)
+}
+
+# broadcast <- function(computation) # (mirror computation)
+
+# client-requests
+
+push <- function(value, address, port) {
+    data <- list(generator_href= ".", value=value, href=uuid::getUUID())
+    fd <- orcv::event_push(list(header="PUT /data", payload=data), address, port)
+    orcv::event_complete(fd)
+    structure(data, class="Data")
+}
+remote_call <- function(procedure, arguments, address, port) {
+    arguments <- lapply(arguments,function(arg) {if (inherits(arg, "Data") arg else push(arg, address, port))})
+    computation <- list(procedure=procedure, arguments=arguments, alignments=NULL)
+    fd <- orcv::event_push(list(header="PUT /computation", payload=computation), address, port)
+    orcv::event_complete(fd)
+    structure(computation, class="Computation")
+}
+pull <- function(href, address, port) {
+    fd <- orcv::event_push(list(header="GET /data", payload=href))
+    value <- orcv::await_response(fd)
+    orcv::event_complete(fd)
+    value
+}
+
+# globals
+
+Store <- new.env(parent=emptyenv())
+Stage <- new.env(parent=emptyenv())
+Events <- new.env(parent=emptyenv())
+Audience <- new.env(parent=emptyenv())
+
+# Prereq Staging
+
 search <- function(collection, key, ...)
     key %in% names(collection)
 
 stage <- function(input, prereqs) {
     if (length(prereqs) == 0L) {
-        emit(computationReady, input)
+        event_internal_push(computationReady, input)
     } else {
         compCountDown <- new.env(parent=emptyenv())
         compCountDown$computation <- input
@@ -92,100 +154,9 @@ stage <- function(input, prereqs) {
     }
 }
 
-# callbacks
+# misc
 
-putData <- function(data) {
-    send.socket(Replier, "204")
-    newData(data)
-}
-putComputation <- function(computation) {
-    send.socket(Replier, "204")
-    newComputation(computation)
-}
-getData <- function(whatwhere) {
-    send.socket(Replier, get(whatwhere$what, Store))
-}
-
-newData <- function(data) {
-    assign(data$href, data, Store)
-    if (search(Stage, data$href))
-        emit(prereqAvailable, data$href)
-  # TODO: if (some client wanting this data) send(data, to_client); remove from clientelle
-}
-newComputation <- function(computation) {
-    stage(computation, computation$prereqs)
-    avail <- search(Store, computation$prereqs)
-    for (prereq in computation$prereqs[avail])
-        emit(prereqAvailable, prereq$href)
-    for (prereq in computation$prereqs[!avail])
-        pull_async(prereq$href)
-}
-prereqAvailable <- function(prereq_href) {
-    if (!search(Stage, prereq_href)) return(NULL)
-    pendingComps <- get(prereq_href, Stage)
-    for (i in length(pendingComps):1) {
-        compCountDown <- pendingComps[[i]]
-        compCountDown$remaining_prereqs <- compCountDown$remaining_prereqs - 1
-        if (compCountDown$remaining_prereqs == 0L)
-            emit(computationReady, compCountDown$computation)
-            pendingComps <- pendingComps[-i]
-    }
-    if (pendingComps == list()) rm(prereq_href, Stage)
-}
-computationReady <- function(computation) {
-    prereqs <- lapply(sapply(computation$prereqs, '$', href),
-                      function(x) get(x, Store)$value)
-    result <- do.call(computation$computation, prereqs)
-    emit(newData, result)
-    broadcast(computation)
-}
-
-# client-requests
-
-push_async <- function(value, location) {
-    # TODO: replace location argument with location service
-    data <- list(generator_href= ".", value=value, href=getUUID())
-    sock <- init.socket(Context, "ZMQ_REQ")
-    connect.socket(sock, location)
-    send.socket(sock, list(header="PUT /data", payload=data))
-    # TODO: Add to clients list to poll on if available
-    sock
-}
-push_sync <- function(value, location) {
-    sock <- push_async(value, location)
-    data <- receive.socket(sock)
-    disconnect.socket(sock)
-    data
-
-}
-remote_call <- function(procedure, arguments, location) {
-    arguments <- lapply(arguments, push)
-    computation <- list(procedure=procedure, arguments=arguments, alignments=NULL)
-    sock <- init.socket(Context, "ZMQ_REQ")
-    connect.socket(sock, location)
-    send.socket(sock, list(header="PUT /computation", payload=computation))
-    receive.socket()
-    disconnect.socket(sock)
-}
-pull_async <- function(href, location) {
-    # TODO: replace location argument with location service
-    # TODO: if value apparently missing, try to recover the data through its generating computation
-    sock <- init.socket(Context, "ZMQ_REQ")
-    connect.socket(sock, location)
-    send.socket(sock, list(header="GET /data", payload=href))
-    # TODO: add to servers list to poll on if available
-    sock
-}
-pull_sync <- function(href, location) {
-    sock <- pull_async(href, location)
-    data <- receive.socket()
-    disconnect.socket(sock)
-    data
-}
-
-# globals
-
-Store <- new.env(parent=emptyenv())
-Stage <- new.env(parent=emptyenv())
-Events <- new.env(parent=emptyenv())
-Audience <- new.env(parent=emptyenv())
+PORT <- local(function(set) {
+        if (!missing(set)) port <<- set
+        else port
+})
