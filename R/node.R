@@ -12,9 +12,9 @@ node <- function(port) {
 }
 
 register_external_handlers <- function() {
-    on("PUT /data", putData)
-    on("PUT /computation", putComputation)
-    on("GET /data", getData)
+    on("PUT /data/*", putData)
+    on("PUT /computation/*", putComputation)
+    on("GET /data/*", getData)
 }
 register_internal_handlers <- function() {
     on("prereqAvailable", prereqAvailable)
@@ -27,15 +27,24 @@ on <- function(event, handler) {
     assign(event, handler, Events)
 }
 
-next_event <- function() orcv::event_pop()
+next_event <- function() {
+    event <- orcv::event_pop()
+    cat("Pulling Event: ", event$data$header, "\n")
+    event
+}
 
 handle <- function(event) {
-    handler <- get(event$data$header, Events)
+    events <- names(Events)
+    event_name <- event$data$header
+    cat("Handling Event: ", event_name, "\n")
+    handler_name <- events[Vectorize(grepl)(glob2rx(events), event_name)]
+    handler <- get(handler_name, Events)
     handler(event)
 }
 
 event_internal_push <- function(event, context) {
     fd <- orcv::event_push(list(header=event, payload=context), "localhost", PORT())
+    cat("Pushing internal event: ", event, "\n")
     orcv::event_complete(fd)
 }
 
@@ -77,7 +86,6 @@ newComputation <- function(computation) {
         event_internal_push("prereqAvailable", prereq$href)
     for (prereq in computation$prereqs[!avail]) {
         # ask for locations
-        location <- NULL
         pull_async(prereq, location)
     }
 }
@@ -96,33 +104,41 @@ prereqAvailable <- function(prereq_href) {
 computationReady <- function(computation) {
     prereqs <- lapply(sapply(computation$prereqs, '$', href),
                       function(x) get(x, Store)$value)
-    result <- do.call(computation$computation, prereqs)
-    event_internal_push("newData", result)
-    broadcast(computation)
+    result <- do.call(computation$procedure, prereqs)
+    event_internal_push("newData", list(href=computation$output, value=result))
+    # broadcast(computation)
 }
 
 # broadcast <- function(computation) # (mirror computation)
 
 # client-requests
 
-push <- function(value, address, port) {
-    data <- list(generator_href= ".", value=value, href=uuid::getUUID())
-    fd <- orcv::event_push(list(header="PUT /data", payload=data), address, port)
+push_nonblocking <- function(value, address, port) {
+    data <- list(generator_href= ".", value=value, href=uuid::UUIDgenerate())
+    header <- paste0("PUT /data/", data$href)
+    cat("Pushing Event: ", header, "\n")
+    fd <- orcv::event_push(list(header=header, payload=data), address, port)
     orcv::event_complete(fd)
     structure(data, class="Data")
 }
-remote_call <- function(procedure, arguments, address, port) {
-    arguments <- lapply(arguments,function(arg) {if (inherits(arg, "Data") arg else push(arg, address, port))})
-    computation <- list(procedure=procedure, arguments=arguments, alignments=NULL)
-    fd <- orcv::event_push(list(header="PUT /computation", payload=computation), address, port)
+remote_call_nonblocking <- function(procedure, arguments, address, port) {
+    arguments <- lapply(arguments, function(arg)
+        if (inherits(arg, "Data")) arg else orcv::event_push(arg, address, port))
+    computation <- list(procedure=procedure, arguments=arguments, alignments=NULL,
+                        href=uuid::UUIDgenerate(), output=uuid::UUIDgenerate())
+    header <- paste0("PUT /computation/", computation$href)
+    cat("Pushing Event: ", header, "\n")
+    fd <- orcv::event_push(list(header=header, payload=computation), address, port)
     orcv::event_complete(fd)
     structure(computation, class="Computation")
 }
-pull <- function(href, address, port) {
-    fd <- orcv::event_push(list(header="GET /data", payload=href))
-    value <- orcv::await_response(fd)
-    orcv::event_complete(fd)
-    value
+pull_blocking <- function(href, address, port) {
+    header <- paste0("GET /data/", href)
+    cat("Pushing Event: ", header, "\n")
+    fd <- orcv::event_push(list(header=header, payload=href), address, port)
+    event <- orcv::await_response(fd)
+    orcv::event_complete(event$fd)
+    event$data
 }
 
 # globals
