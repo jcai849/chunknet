@@ -8,6 +8,7 @@ node <- function(port) {
     repeat {
         event <- next_event()
         handle(event)
+        cat("...DONE\n")
     }
 }
 
@@ -17,10 +18,10 @@ register_external_handlers <- function() {
     on("GET /data/*", getData)
 }
 register_internal_handlers <- function() {
-    on("prereqAvailable", prereqAvailable)
-    on("newComputation", newComputation)
-    on("newData", newData)
-    on("computationReady", computationReady)
+    on("prereqAvailable *", prereqAvailable)
+    on("newComputation *", newComputation)
+    on("newData *", putData)
+    on("computationReady *", computationReady)
 }
 
 on <- function(event, handler) {
@@ -43,14 +44,14 @@ handle <- function(event) {
 }
 
 event_internal_push <- function(event, context) {
-    fd <- orcv::event_push(list(header=event, payload=context), "localhost", PORT())
     cat("Pushing internal event: ", event, "\n")
+    fd <- orcv::event_push(list(header=event, payload=context), "localhost", PORT())
     orcv::event_complete(fd)
 }
 
 # handlers
 # Event {
-#	FD connection
+#	FD fd
 #	list data {
 #                  character header
 #                  (any) payload
@@ -69,43 +70,63 @@ putComputation <- function(event) {
 }
 getData <- function(event) {
     request <- event$data$payload
-    orcv::respond(event, get(request, Store))
-    orcv::event_complete(event)
+    if (search(Store, request)) {
+        orcv::respond(event, get(request, Store))
+        orcv::event_complete(event)
+    } else {
+        already_requested <- search(Audience, request)
+        assign(request,
+               if (already_requested) c(get(request, Audience), event$fd) else event$fd,
+               Audience)
+    }
 }
 
 newData <- function(data) {
     assign(data$href, data, Store)
     if (search(Stage, data$href))
-        event_internal_push("prereqAvailable", data$href)
-  # TODO: if (some client wanting this data) send(data, to_client); remove from clientelle
+        event_internal_push(paste0("prereqAvailable ", data$href), data$href)
+    if (search(Audience, data$href)) {
+        fds <- get(data$href, Audience)
+        for (fd in fds) {
+            class(fd) <- c("FD", class(fd))
+            orcv::respond(fd, data)
+            orcv::event_complete(fd)
+        }
+        rm(list=data$href, pos=Audience)
+    }
 }
 newComputation <- function(computation) {
-    stage(computation, computation$prereqs)
-    avail <- search(Store, computation$prereqs)
-    for (prereq in computation$prereqs[avail])
-        event_internal_push("prereqAvailable", prereq$href)
-    for (prereq in computation$prereqs[!avail]) {
+    stage(computation, computation$arguments)
+    avail <- search(Store, sapply(computation$arguments, "[[", "href"))
+    for (prereq in computation$arguments[avail])
+        event_internal_push(paste0("prereqAvailable ", prereq$href), prereq$href)
+    for (prereq in computation$arguments[!avail]) {
         # ask for locations
         pull_async(prereq, location)
     }
 }
-prereqAvailable <- function(prereq_href) {
+prereqAvailable <- function(prereq_event) {
+    prereq_href <- prereq_event$data$payload
     if (!search(Stage, prereq_href)) return(NULL)
     pendingComps <- get(prereq_href, Stage)
     for (i in length(pendingComps):1) {
         compCountDown <- pendingComps[[i]]
         compCountDown$remaining_prereqs <- compCountDown$remaining_prereqs - 1
         if (compCountDown$remaining_prereqs == 0L)
-            event_internal_push("computationReady", compCountDown$computation)
+            event_internal_push(paste0("computationReady ", compCountDown$computation$href), compCountDown$computation)
             pendingComps <- pendingComps[-i]
     }
-    if (pendingComps == list()) rm(prereq_href, Stage)
+    if (!length(pendingComps)) rm(list=prereq_href, pos=Stage)
+    orcv::event_complete(prereq_event)
 }
-computationReady <- function(computation) {
-    prereqs <- lapply(sapply(computation$prereqs, '$', href),
+computationReady <- function(computation_event) {
+    computation <- computation_event$data$payload
+    prereqs <- lapply(sapply(computation$arguments, "[[", "href"),
                       function(x) get(x, Store)$value)
     result <- do.call(computation$procedure, prereqs)
-    event_internal_push("newData", list(href=computation$output, value=result))
+    event_internal_push(paste0("newData ", computation$output),
+        list(generator_href=computation$href, value=result, href=computation$output))
+    orcv::event_complete(computation_event)
     # broadcast(computation)
 }
 
@@ -123,7 +144,7 @@ push_nonblocking <- function(value, address, port) {
 }
 remote_call_nonblocking <- function(procedure, arguments, address, port) {
     arguments <- lapply(arguments, function(arg)
-        if (inherits(arg, "Data")) arg else orcv::event_push(arg, address, port))
+        if (inherits(arg, "Data")) arg else push_nonblocking(arg, address, port))
     computation <- list(procedure=procedure, arguments=arguments, alignments=NULL,
                         href=uuid::UUIDgenerate(), output=uuid::UUIDgenerate())
     header <- paste0("PUT /computation/", computation$href)
@@ -155,11 +176,11 @@ search <- function(collection, key, ...)
 
 stage <- function(input, prereqs) {
     if (length(prereqs) == 0L) {
-        event_internal_push(computationReady, input)
+        event_internal_push(paste0("computationReady ", input$href), input)
     } else {
         compCountDown <- new.env(parent=emptyenv())
         compCountDown$computation <- input
-        compCoutnDown$remaining_prereqs <- length(prereqs)
+        compCountDown$remaining_prereqs <- length(prereqs)
 
         for (prereq in prereqs) {
             already_staged <- search(Stage, prereq$href)
