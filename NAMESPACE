@@ -1,2 +1,2 @@
-export(push_nonblocking, remote_call_nonblocking, pull_blocking,
-       node)
+export(push, remote_call, pull,
+       worker, location_service)
