@@ -187,6 +187,18 @@ pull <- function(href) {
     orcv::event_complete(event$fd)
     event$data
 }
+pull_eventually <- function(href) {
+    loc_header <- paste0("GET /data/", href)
+    fd <- orcv::event_push(list(header=loc_header, payload=href))
+    event <- orcv::await_response(fd)
+    orcv::event_complete(event)
+    location <- event$data
+
+    header <- paste0("GET /data/", href)
+    log("Pushing Event: %s", header)
+    fd <- orcv::event_push(list(header=header, payload=href), location$address, location$port)
+    monitor_response(fd)
+}
 
 # globals
 
@@ -213,7 +225,7 @@ stage <- function(computation_href, prereqs) {
         for (unaccounted_prereq in unaccounted_prereqs) {
             log("Adding pending computation %s to prereq %s in PreReqs", computation_href, unaccounted_prereq)
             assign(unaccounted_prereq, c(get0(unaccounted_prereq, PreReqs), computation_href), PreReqs)
-            # pull_nonblocking(unaccounted_prereq)
+            pull_eventually(unaccounted_prereq)
         }
     }
 }
