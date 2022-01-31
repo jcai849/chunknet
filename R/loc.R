@@ -1,21 +1,3 @@
-location_service <- function(port) {
-    orcv::start(port)
-    PORT(port)
-    register_loc_handlers()
-    repeat {
-        event <- next_event()
-        handle(event)
-        log("...DONE")
-    }
-}
-
-register_loc_handlers <- function() {
-    on("POST /node/*", postNode)
-    on("GET /nodes", getNodes)
-    on("PUT /node/*/*", putDataLoc)
-    on("GET /data/*", getDataLoc)
-}
-
 postNode <- function(event) {
     newNode(event$data$payload)
     orcv::event_complete(event)
