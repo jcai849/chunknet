@@ -1,10 +1,9 @@
 # Overview
 
-worker <- function(port) {
-    orcv::start(port)
-    PORT(port)
-    register_external_handlers()
-    register_internal_handlers()
+worker <- function(worker_address, worker_port, loc_service_address, loc_service_port) {
+    LOC(worker_address, worker_port)
+    orcv::start(LOC()$port)
+    worker_init(loc_service_address, loc_service_port)
     repeat {
         event <- next_event()
         handle(event)
@@ -12,16 +11,22 @@ worker <- function(port) {
     }
 }
 
-register_external_handlers <- function() {
+worker_init <- function(loc_service_address, loc_service_port) {
+    register_location(loc_service_address, loc_service_port)
     on("PUT /data/*", putData)
     on("PUT /computation/*", putComputation)
     on("GET /data/*", getData)
-}
-register_internal_handlers <- function() {
     on("newData *", putData)
     on("newComputation *", newComputation)
     on("prereqIsAvailable *", prereqIsAvailable)
     on("computationIsReady *", computationIsReady)
+}
+
+register_location <- function(loc_service_address, loc_service_port) {
+    NODE(uuid::UUIDgenerate())
+    header <- paste0("POST /node/", NODE())
+    fd <- orcv::event_push(list(header=header, payload=NODE()), loc_service_address, loc_service_port)
+    orcv::event_complete(fd)
 }
 
 on <- function(event, handler) {
@@ -46,7 +51,7 @@ handle <- function(event) {
 
 event_internal_push <- function(event, context) {
     log("Pushing internal event: %s", event)
-    fd <- orcv::event_push(list(header=event, payload=context), "localhost", PORT())
+    fd <- orcv::event_push(list(header=event, payload=context), LOC()$address, LOC()$port)
     orcv::event_complete(fd)
 }
 
@@ -232,10 +237,6 @@ stage <- function(computation_href, prereqs) {
 
 # misc
 
-PORT <- local(function(set) {
-        if (!missing(set)) port <<- set
-        else port
-})
 LOC <- local(function(address, port) {
     if (missing(address) && missing(port)) {
         list(address=address, port=port)
@@ -245,8 +246,9 @@ LOC <- local(function(address, port) {
     }
 })
 
+NODE <- local(function(node_id) if (missing(node_id)) node_id else node_id <<- node_id)
+
 log <- function(msg, ...) {
     cat(paste0(format(Sys.time(), "%H:%M:%OS9 "),
         sprintf(msg, ...), "\n"))
 }
-
