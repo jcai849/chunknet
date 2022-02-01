@@ -30,9 +30,10 @@ worker_init <- function(locator_location) {
 }
 
 locator <- node(locator_init)
-worker <- function(address, port, locator_address, locator_port)
-		node(worker_init)(address, port,
-				  list(address=locator_address, port=locator_port)
+worker <- function(address, port, locator_address, locator_port) {
+	node(worker_init)(address, port,
+			  list(address=locator_address, port=locator_port))
+}
 
 on <- function(event, handler) {
     log("Adding handler for event %s", event)
