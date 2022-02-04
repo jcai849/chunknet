@@ -36,7 +36,7 @@ remote_call <- function(procedure, arguments) {
 
 request_pull(href) {
 	location <- get_location(href)[1,]
-	fd <- event_external_push_keep(paste0("GET /data", href), href, location$address, location$port)
+	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, location$address, location$port)
 }
 
 pull <- function(href) {

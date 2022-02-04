@@ -12,9 +12,9 @@ node <- function(init_function) {
 }
 
 locator_init <- function(...) {
-    on("POST /node", postNode)
+    on("POST /node", non_responding(postNode))
     on("GET /nodes", getNodes)
-    on("POST /data/*", postDataLoc)
+    on("POST /data/*", non_responding(postDataLoc))
     on("GET /data/*", getDataLocs)
 }
 
@@ -22,13 +22,10 @@ worker_init <- function(locator_location) {
     LOCATOR(locator_location$address, locator_location$port)
     event_external_push("POST /node", SELF(),
 			LOCATOR()$address, LOCATOR()$port)
-    on("POST /data/*", putData)
-    on("PUT /computation/*", putComputation)
+    on("POST /data/*", non_responding(postData))
     on("GET /data/*", getData)
-    on("newData *", putData)
-    on("newComputation *", newComputation)
-    on("prereqIsAvailable *", prereqIsAvailable)
-    on("computationIsReady *", computationIsReady)
+    on("PUT /computation/*", non_responding(putComputation))
+    on("PUT /computation-ready/*", non_responding(computationIsReady))
 }
 
 locator <- node(locator_init)

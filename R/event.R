@@ -20,11 +20,16 @@ handle <- function(event) {
     handler(event)
 }
 
-non_responding_handle <- function(handler) {
+non_responding <- function(handler) {
 	function(event) {
-		handler(event$data)
+		handler(event)
 		orcv::event_complete(event)
 	}
+}
+
+respond <- function(fd, data) {
+        orcv::event_respond(fd, data)
+        orcv::event_complete(fd)
 }
 
 next_event <- function() {
@@ -45,4 +50,8 @@ event_external_push <-  function(header, payload, address, port) {
 
 event_internal_push <- function(header, payload) {
 	event_external_push(header, payload, LOC()$address, LOC()$port)
+}
+
+extract <- function(text, pattern) {
+	regmatches(text, regexec(pattern, text))[[1]][-1]
 }
