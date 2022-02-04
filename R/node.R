@@ -1,7 +1,7 @@
 node <- function(init_function) {
         function(address, port, init_args) {
-                LOC(address, port)
-                orcv::start(LOC()$port)
+                SELF(address, port)
+                orcv::start(SELF()$port)
                 init_function(init_arg)
                 repeat {
                         event <- next_event()
@@ -12,15 +12,17 @@ node <- function(init_function) {
 }
 
 locator_init <- function(...) {
-    on("POST /node/*", postNode)
+    on("POST /node", postNode)
     on("GET /nodes", getNodes)
-    on("PUT /node/*/*", putDataLoc)
-    on("GET /data/*", getDataLoc)
+    on("POST /data/*", postDataLoc)
+    on("GET /data/*", getDataLocs)
 }
 
 worker_init <- function(locator_location) {
-    register_location(locator_location$address, locator_location$port)
-    on("PUT /data/*", putData)
+    LOCATOR(locator_location$address, locator_location$port)
+    event_external_push("POST /node", SELF(),
+			LOCATOR()$address, LOCATOR()$port)
+    on("POST /data/*", putData)
     on("PUT /computation/*", putComputation)
     on("GET /data/*", getData)
     on("newData *", putData)
@@ -35,42 +37,18 @@ worker <- function(address, port, locator_address, locator_port) {
 			  list(address=locator_address, port=locator_port))
 }
 
-on <- function(event, handler) {
-    log("Adding handler for event %s", event)
-    assign(event, handler, Events)
+loc_cache <- function() {
+	function(address, port) {
+	    if (missing(address) && missing(port)) {
+		list(address=address, port=port)
+	    } else {
+		address <<- address
+		port    <<- port
+	    }
+	}
 }
-
-next_event <- function() {
-    event <- orcv::event_pop()
-    log("Pulling Event: %s", event$data$header)
-    event
-}
-
-event_internal_push <- function(event, context) {
-    log("Pushing internal event: %s", event)
-    fd <- orcv::event_push(list(header=event, payload=context),
-			   LOC()$address, LOC()$port)
-    orcv::event_complete(fd)
-}
-
-register_location <- function(loc_service_address, loc_service_port) {
-    NODE(uuid::UUIDgenerate())
-    header <- paste0("POST /node/", NODE())
-    fd <- orcv::event_push(list(header=header, payload=NODE()),
-                           loc_service_address, loc_service_port)
-    orcv::event_complete(fd)
-}
-
-LOC <- local(function(address, port) {
-    if (missing(address) && missing(port)) {
-        list(address=address, port=port)
-    } else {
-        address <<- address
-        port    <<- port
-    }
-})
-
-NODE <- local(function(node_id) if (missing(node_id)) node_id else node_id <<- node_id)
+SELF <- loc_cache()
+LOCATOR <- loc_cache()
 
 log <- function(msg, ...) {
     cat(paste0(format(Sys.time(), "%H:%M:%OS9 "),
