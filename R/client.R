@@ -34,7 +34,7 @@ remote_call <- function(procedure, arguments) {
 	structure(list(generator_href = computation$href, href=computation$output_href), class="Chunk") 
 }
 
-request_pull(href) {
+request_pull <- function(href) {
 	location <- get_location(href)[1,]
 	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, location$address, location$port)
 }

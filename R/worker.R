@@ -11,7 +11,7 @@ postData <- function(event) {
 
 getData <- function(event) {
 	data_href <- extract(event$data$header, "GET /data/(.*)")
-	if (data_avail(data_href))) {
+	if (data_avail(data_href)) {
 		log("Data found. Sending %s to FD %d", data_href, event$fd)
 		orcv::respond(event, get_data(data_href))
 		orcv::event_complete(event)
@@ -48,7 +48,7 @@ with(Worker, {
 	Store <- new.env() # data_href -> value
 	Stage <- data.frame(unaccounted_prereq_href=character(),
 			    pending_computation_href=character())
-	Audience <- data.frame(fd=integer(), data_href=character)
+	Audience <- data.frame(fd=integer(), data_href=character())
 })
 
 store_data <- function(href, value) with(Worker,
@@ -91,7 +91,7 @@ is_unaccounted_prereq <- function(data_href) with(Worker,
 )
 
 add_audience <- function(data_href, fd) with(Worker,
-	Audience <- rbind(Audience, data.frame(fd=fd, data_href=data_href)
+	Audience <- rbind(Audience, data.frame(fd=fd, data_href=data_href))
 )
 
 send_audience <- function(data_href) with(Worker, {

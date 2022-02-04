@@ -14,7 +14,7 @@ postDataLoc <- function(event) {
 }
 
 getDataLocs <- function(event) {
-	data_href <- extract(event$data$header, "GET /data/(.*)"
+	data_href <- extract(event$data$header, "GET /data/(.*)")
 	node_hrefs <- get_data_nodes(data_href)
 	locs <- get_locs(node_hrefs)
 	respond(event, locs)
@@ -26,9 +26,9 @@ with(Locator, {
 	Data <- data.frame(node_href=character(), data_href=character())
 })
 
-add_node <- function(address, port) with(Locator, {
-	Nodes <- rbind(Nodes, data.frame(node_href=UUID::getuuid(), address=address, port=port)
-})
+add_node <- function(address, port) with(Locator,
+	Nodes <- rbind(Nodes, data.frame(node_href=UUID::getuuid(), address=address, port=port))
+)
 
 get_locs <- function(node_hrefs) {
 	Nodes <- get("Nodes", Locator)
@@ -44,9 +44,9 @@ get_node <- function(address, port) {
 	Nodes[Nodes$address == address & Nodes$port == port, c("address", "port")]
 }
 
-add_data <- function(data_hrefs, node_hrefs) with(Data, {
-	Data <- rbind(Data,data.frame(node_href=node_hrefs, data_href=data_hrefs)
-})
+add_data <- function(data_hrefs, node_hrefs) with(Data,
+	Data <- rbind(Data, data.frame(node_href=node_hrefs, data_href=data_hrefs))
+)
 
 get_data_nodes <- function(data_hrefs) {
 	Data <- get("Data", Locator)
