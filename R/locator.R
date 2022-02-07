@@ -4,7 +4,7 @@ postNode <- function(event) {
 }
 
 getNodes <- function(event) {
-	respond(event, get_all_nodes)
+	respond(event, get_all_nodes())
 }
 
 postDataLoc <- function(event) {
@@ -15,8 +15,8 @@ postDataLoc <- function(event) {
 }
 
 getDataLocs <- function(event) {
-	data_href <- extract(event$data$header, "GET /data/(.*)")
-	node_hrefs <- get_data_nodes(data_href)
+	data_hrefs <- extract(event$data$header, "GET /data/(.*)")
+	node_hrefs <- get_data_nodes(data_hrefs)
 	locs <- get_locs(node_hrefs)
 	respond(event, locs)
 }
@@ -44,7 +44,7 @@ get_all_nodes <- function() {
 
 get_node <- function(address, port) {
 	log("Getting node by address %s and port %d", address, port)
-	Locator$Nodes[Locator$Nodes$address == address & Locator$Nodes$port == port, c("address", "port")]
+	Locator$Nodes[Locator$Nodes$address == address & Locator$Nodes$port == port, ]$node_href
 }
 
 add_data <- function(data_hrefs, node_hrefs) {
@@ -54,5 +54,5 @@ add_data <- function(data_hrefs, node_hrefs) {
 
 get_data_nodes <- function(data_hrefs) {
 	log("Getting locations of data identified by %s", data_hrefs)
-	Locator$Data$node_href[Locator$Data$data_href %in% data_href]
+	Locator$Data$node_href[Locator$Data$data_href %in% data_hrefs]
 }

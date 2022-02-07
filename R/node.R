@@ -29,7 +29,7 @@ worker_init <- function(locator_location) {
 	on("POST /data/*", non_responding(postData))
 	on("GET /data/*", getData)
 	on("PUT /computation/*", non_responding(putComputation))
-	on("PUT /computation-ready/*", non_responding(computationIsReady))
+	on("PUT /computation-ready/*", non_responding(putComputationReady))
 }
 
 locator <- node(locator_init)

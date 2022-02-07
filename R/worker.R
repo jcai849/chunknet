@@ -13,11 +13,11 @@ getData <- function(event) {
 	data_href <- extract(event$data$header, "GET /data/(.*)")
 	if (data_avail(data_href)) {
 		log("Data found. Sending %s to FD %d", data_href, event$fd)
-		orcv::respond(event, get_data(data_href))
-		orcv::event_complete(event)
+		value <- get_data(data_href)
+		respond(event, list(header=paste0("POST /data/", data_href), payload=value))
 	} else {
 		log("Data not found; Adding FD %d to Audience for %s", event$fd, data_href)
-		add_audience(data_href, fd)
+		add_audience(data_href, event$fd)
 	}
 }
 
@@ -34,7 +34,7 @@ putComputation <- function(event) {
 }
 
 putComputationReady <- function(event) {
-	computation_href <- extract(event$data$header, "PUT /computation/(.*)")
+	computation_href <- extract(event$data$header, "PUT /computation-ready/(.*)")
 	computation <- get_data(computation_href)
 	prereq_hrefs <- sapply(computation$arguments, "[[", "href")
 	arguments <- lapply(prereq_hrefs, get_data)
@@ -63,7 +63,7 @@ data_avail <- function(href) {
 
 get_data <- function(href) {
 	log("Accessing data with href %s", href)
-	get(href, worker$Store)
+	get(href, Worker$Store)
 }
 
 set_computation_ready <- function(href) {
@@ -71,15 +71,19 @@ set_computation_ready <- function(href) {
 	event_internal_push(paste0("PUT /computation-ready/", href), NULL)
 }
 
-stage_computation <- function(computation, prereq_hrefs) {
+stage_computation <- function(computation_href, prereq_hrefs) {
 	log("Staging computation")
 	unaccounted_prereq_hrefs <- prereq_hrefs[!data_avail(prereq_hrefs)]
 	if (length(unaccounted_prereq_hrefs)) {
-		log("Unaccounted prerequisite data added to stage")
 		Worker$Stage <- rbind(Worker$Stage, data.frame(unaccounted_prereq_href=unaccounted_prereq_hrefs,
-							       pending_computation_href=computation$href))
+							       pending_computation_href=computation_href))
+		log("Unaccounted prerequisite data added to stage")
+		locs <- lapply(unaccounted_prereq_hrefs, get_location)
+		elsewhere <- ! sapply(locs, function(x) any(apply(x == SELF(), 1, all)))
+		if (any(elsewhere)) log("Lazily requesting prereqs located elsewhere")
+		lapply(unaccounted_prereq_hrefs[elsewhere], pull_eventually)
 	} else {
-		set_computation_ready(computation$href)
+		set_computation_ready(computation_href)
 	}
 }
 
@@ -88,7 +92,7 @@ register_data <- function(data_href) {
 	now_accounted <- Worker$Stage$unaccounted_prereq_href %in% data_href
 	associated_computations <- Worker$Stage$pending_computation_href[now_accounted]
 	Worker$Stage <- Worker$Stage[!now_accounted,]
-	ready_computations <- ! associated_computations %in% Worker$Stage$pending_computation_href
+	ready_computations <- associated_computations[!associated_computations %in% Worker$Stage$pending_computation_href]
 	lapply(ready_computations, set_computation_ready)
 }
 
@@ -98,15 +102,16 @@ is_unaccounted_prereq <- function(data_href) {
 }
 
 add_audience <- function(data_href, fd) {
-	log("Adding an audience of %d to data href %s", fd, data_href)
-	Worker$Audience <- rbind(Worker$Audience, data.frame(fd=fd, data_href=data_href))
+	log("Adding FD %d to the Audience of data href %s", fd, data_href)
+	Worker$Audience <- rbind(Worker$Audience, data.frame(fd=unclass(fd), data_href=data_href))
 }
 
 send_audience <- function(data_href) {
 	fds <- Worker$Audience$fd[Worker$Audience$data_href %in% data_href]
-	log("Sending %s to audience of %d", data_href, fds)
-	data <- get_data(href)
-	mapply(respond, fds, data) 
+	class(fds) <- "FD"
+	data <- get_data(data_href)
+	log("Sending %s to Audience member FD %d", data_href, fds)
+	for (fd in fds) respond(structure(fd, class="FD"), list(header=paste0("POST /data/", data_href), payload=data))
 }
 
 data_has_audience <- function(data_href) {

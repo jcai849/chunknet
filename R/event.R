@@ -30,7 +30,7 @@ non_responding <- function(handler) {
 }
 
 respond <- function(fd, data) {
-        orcv::event_respond(fd, data)
+        orcv::respond(fd, data)
         orcv::event_complete(fd)
 }
 
@@ -51,7 +51,7 @@ event_external_push <-  function(header, payload, address, port) {
 }
 
 event_internal_push <- function(header, payload) {
-	event_external_push(header, payload, LOC()$address, LOC()$port)
+	event_external_push(header, payload, SELF()$address, SELF()$port)
 }
 
 extract <- function(text, pattern) {

@@ -1,10 +1,17 @@
 post_location <- function(href, location) {
+	log("Sending location to Locator")
 	event_external_push(paste0("POST /data/", href), location, LOCATOR()$address, LOCATOR()$port)
 }
 
 get_location <- function(href) {
-	loc_header <- paste0("GET /data/", href)
 	fd <- orcv::event_push(list(header=paste0("GET /data/", href)), LOCATOR()$address, LOCATOR()$port)
+	event <- orcv::await_response(fd)
+	orcv::event_complete(event)
+	event$data
+}
+
+get_all_locations <- function() {
+	fd <- orcv::event_push(list(header="GET /nodes"), LOCATOR()$address, LOCATOR()$port)
 	event <- orcv::await_response(fd)
 	orcv::event_complete(event)
 	event$data
@@ -13,15 +20,20 @@ get_location <- function(href) {
 push <- function(value, location) {
 	href <- uuid::UUIDgenerate()
 	if (missing(location)) {
-		location <- get_location(href)[1,]
-		post_location(href, location)
+		location <- get_all_locations()[1,]
 	}
+	post_location(href, location)
 	event_external_push(paste0("POST /data/", href), value, location$address, location$port)
 	structure(list(href=href, generator_href="."), class="Chunk")
 }
 
 remote_call <- function(procedure, arguments) {
-	location <- get_location(arguments)[1,]
+	chunk_args <- sapply(arguments, inherits, "Chunk")
+	location <- if (!any(chunk_args)) {
+		get_all_locations()[1,]
+	} else {
+		get_location(arguments[chunk_args][[1]]$href)
+	}
 
 	arguments <- lapply(arguments, function(arg)
 	if (inherits(arg, "Chunk")) arg else push(arg, list(address=location$address, port=location$port)))
@@ -43,10 +55,10 @@ pull <- function(href) {
 	fd <- request_pull(href)
 	event <- orcv::await_response(fd)
 	orcv::event_complete(event$fd)
-	event$data
+	event$data$payload
 }
 
 pull_eventually <- function(href) {
 	fd <- request_pull(href)
-	monitor_response(fd)
+	orcv::monitor_response(fd)
 }
