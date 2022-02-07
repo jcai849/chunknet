@@ -1,2 +1,2 @@
 export(push, remote_call, pull,
-       worker, locator)
+       worker, locator, LOCATOR)

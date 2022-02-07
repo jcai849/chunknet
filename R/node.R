@@ -1,5 +1,5 @@
 node <- function(init_function) {
-        function(address, port, init_args) {
+        function(address, port, init_arg) {
                 SELF(address, port)
                 orcv::start(SELF()$port)
                 init_function(init_arg)
@@ -12,20 +12,23 @@ node <- function(init_function) {
 }
 
 locator_init <- function(...) {
-    on("POST /node", non_responding(postNode))
-    on("GET /nodes", getNodes)
-    on("POST /data/*", non_responding(postDataLoc))
-    on("GET /data/*", getDataLocs)
+	log("Locator initialising...")
+	on("POST /node", non_responding(postNode))
+	on("GET /nodes", getNodes)
+	on("POST /data/*", non_responding(postDataLoc))
+	on("GET /data/*", getDataLocs)
 }
 
 worker_init <- function(locator_location) {
-    LOCATOR(locator_location$address, locator_location$port)
-    event_external_push("POST /node", SELF(),
+	log("Worker initialising...")
+	LOCATOR(locator_location$address, locator_location$port)
+	log("Sending location to locator node")
+	event_external_push("POST /node", SELF(),
 			LOCATOR()$address, LOCATOR()$port)
-    on("POST /data/*", non_responding(postData))
-    on("GET /data/*", getData)
-    on("PUT /computation/*", non_responding(putComputation))
-    on("PUT /computation-ready/*", non_responding(computationIsReady))
+	on("POST /data/*", non_responding(postData))
+	on("GET /data/*", getData)
+	on("PUT /computation/*", non_responding(putComputation))
+	on("PUT /computation-ready/*", non_responding(computationIsReady))
 }
 
 locator <- node(locator_init)
