@@ -29,7 +29,7 @@ with(Locator, {
 
 add_node <- function(address, port) {
 	log("Adding node of address %s and port %d", address, port)
-	Locator$Nodes <- rbind(Locator$Nodes, data.frame(node_href=UUID::getuuid(), address=address, port=port))
+	Locator$Nodes <- rbind(Locator$Nodes, data.frame(node_href=uuid::UUIDgenerate(), address=address, port=port))
 }
 
 get_locs <- function(node_hrefs) {

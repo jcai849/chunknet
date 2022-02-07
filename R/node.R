@@ -22,7 +22,8 @@ locator_init <- function(...) {
 worker_init <- function(locator_location) {
 	log("Worker initialising...")
 	LOCATOR(locator_location$address, locator_location$port)
-	log("Sending location to locator node")
+	log("Sending location of address %s and port %d to locator node",
+	    SELF()$address, SELF()$port)
 	event_external_push("POST /node", SELF(),
 			LOCATOR()$address, LOCATOR()$port)
 	on("POST /data/*", non_responding(postData))
@@ -38,6 +39,8 @@ worker <- function(address, port, locator_address, locator_port) {
 }
 
 loc_cache <- function() {
+	ADDRESS <- NULL
+	PORT <- NULL
 	function(address, port) {
 	    if (missing(address) && missing(port)) {
 		list(address=ADDRESS, port=PORT)

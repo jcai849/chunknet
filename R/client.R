@@ -4,7 +4,7 @@ post_location <- function(href, location) {
 
 get_location <- function(href) {
 	loc_header <- paste0("GET /data/", href)
-	fd <- orcv::event_push(list(header=paste0("GET /data/", href)), LOCATOR()$address, LOCATOR$port)
+	fd <- orcv::event_push(list(header=paste0("GET /data/", href)), LOCATOR()$address, LOCATOR()$port)
 	event <- orcv::await_response(fd)
 	orcv::event_complete(event)
 	event$data
