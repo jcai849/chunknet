@@ -40,10 +40,10 @@ worker <- function(address, port, locator_address, locator_port) {
 loc_cache <- function() {
 	function(address, port) {
 	    if (missing(address) && missing(port)) {
-		list(address=address, port=port)
+		list(address=ADDRESS, port=PORT)
 	    } else {
-		address <<- address
-		port    <<- port
+		ADDRESS <<- address
+		PORT    <<- port
 	    }
 	}
 }

@@ -51,66 +51,65 @@ with(Worker, {
 	Audience <- data.frame(fd=integer(), data_href=character())
 })
 
-store_data <- function(href, value) with(Worker, {
+store_data <- function(href, value) {
 	log("Storing data under href %s", href)
-	assign(href, value, Store)
-})
+	assign(href, value, Worker$Store)
+}
 
-data_avail <- function(href) with(Worker, {
+data_avail <- function(href) {
 	log("Checking local availability of data %s", href)
-	href %in% ls(Store)
-})
+	href %in% ls(Worker$Store)
+}
 
-get_data <- function(href) with(Worker, {
+get_data <- function(href) {
 	log("Accessing data with href %s", href)
-	get(href, Store)
-})
+	get(href, worker$Store)
+}
 
 set_computation_ready <- function(href) {
 	log("Setting computation %s as ready", href)
 	event_internal_push(paste0("PUT /computation-ready/", href), NULL)
 }
 
-stage_computation <- function(computation, prereq_hrefs) with(Worker, {
+stage_computation <- function(computation, prereq_hrefs) {
 	log("Staging computation")
 	unaccounted_prereq_hrefs <- prereq_hrefs[!data_avail(prereq_hrefs)]
 	if (length(unaccounted_prereq_hrefs)) {
 		log("Unaccounted prerequisite data added to stage")
-		Stage <- rbind(Stage, data.frame(unaccounted_prereq_href=unaccounted_prereq_hrefs,
-						 pending_computation_href=computation$href))
+		Worker$Stage <- rbind(Worker$Stage, data.frame(unaccounted_prereq_href=unaccounted_prereq_hrefs,
+							       pending_computation_href=computation$href))
 	} else {
 		set_computation_ready(computation$href)
 	}
-})
+}
 
-register_data <- function(data_href) with(Worker, {
+register_data <- function(data_href) {
 	log("Registering data %s and checking associated pending computations", data_href)
-	now_accounted <- Stage$unaccounted_prereq_href %in% data_href
-	pending_computations <- Stage$pending_computation_href[now_accounted]
-	Stage <- Stage[!now_accounted,]
-	no_longer_pending_computations <- ! pending_computations %in% Stage$pending_computation_href
-	ready_computations <- Stage$pending_computation_href[no_longer_pending_computations]
+	now_accounted <- Worker$Stage$unaccounted_prereq_href %in% data_href
+	associated_computations <- Worker$Stage$pending_computation_href[now_accounted]
+	Worker$Stage <- Worker$Stage[!now_accounted,]
+	ready_computations <- ! associated_computations %in% Worker$Stage$pending_computation_href
 	lapply(ready_computations, set_computation_ready)
-})
+}
 
-is_unaccounted_prereq <- function(data_href) with(Worker, {
+is_unaccounted_prereq <- function(data_href) {
 	log("Checking if %s is an unaccounted prerequisite", data_href)
-	data_href %in% Stage$unaccounted_prereq_href
-})
+	data_href %in% Worker$Stage$unaccounted_prereq_href
+}
 
-add_audience <- function(data_href, fd) with(Worker, {
+add_audience <- function(data_href, fd) {
 	log("Adding an audience of %d to data href %s", fd, data_href)
-	Audience <- rbind(Audience, data.frame(fd=fd, data_href=data_href))
-})
+	Worker$Audience <- rbind(Worker$Audience, data.frame(fd=fd, data_href=data_href))
+}
 
-send_audience <- function(data_href) with(Worker, {
-	fds <- Audience$fd[Audience$data_href %in% data_href]
+send_audience <- function(data_href) {
+	fds <- Worker$Audience$fd[Worker$Audience$data_href %in% data_href]
 	log("Sending %s to audience of %d", data_href, fds)
 	data <- get_data(href)
 	mapply(respond, fds, data) 
-})
+}
 
-data_has_audience <- function(data_href) with(Worker, {
+data_has_audience <- function(data_href) {
 	log("Checking if data %s has associated audience", data_href)
-	data_href %in% Audience$data_href
-})
+	data_href %in% Worker$Audience$data_href
+}

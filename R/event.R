@@ -6,6 +6,8 @@
 #                 }
 # }
 
+Events <- new.env()
+
 on <- function(event, handler) {
     log("Adding handler for event %s", event)
     assign(event, handler, Events)
