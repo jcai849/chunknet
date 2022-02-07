@@ -1,5 +1,5 @@
 post_location <- function(href, location) {
-	log("Sending location to Locator")
+	log("Sending location of %s to Locator", href)
 	event_external_push(paste0("POST /data/", href), location, LOCATOR()$address, LOCATOR()$port)
 }
 
@@ -23,6 +23,7 @@ push <- function(value, location) {
 		location <- get_all_locations()[1,]
 	}
 	post_location(href, location)
+	log("Pushing data of %s to address %s port %d", href, location$address, location$port) 
 	event_external_push(paste0("POST /data/", href), value, location$address, location$port)
 	structure(list(href=href, generator_href="."), class="Chunk")
 }
