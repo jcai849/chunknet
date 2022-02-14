@@ -22,9 +22,9 @@ push <- function(value, location) {
 	if (missing(location)) {
 		location <- get_all_locations()[1,]
 	}
-	post_location(href, location)
 	log("Pushing data of %s to address %s port %d", href, location$address, location$port) 
 	event_external_push(paste0("POST /data/", href), value, location$address, location$port)
+	post_location(href, location)
 	structure(list(href=href, generator_href="."), class="Chunk")
 }
 
@@ -41,9 +41,9 @@ remote_call <- function(procedure, arguments) {
 	computation <- structure(list(procedure=procedure, arguments=arguments, alignments=NULL,
 				      href=uuid::UUIDgenerate(), output_href=uuid::UUIDgenerate()),
 				 class="Computation")
+	event_external_push(paste0("PUT /computation/", computation$href), computation, location$address, location$port)
 	post_location(computation$href, location)
 	post_location(computation$output_href, location)
-	event_external_push(paste0("PUT /computation/", computation$href), computation, location$address, location$port)
 	structure(list(generator_href = computation$href, href=computation$output_href), class="Chunk") 
 }
 
