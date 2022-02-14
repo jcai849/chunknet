@@ -1,5 +1,5 @@
 # Event {
-#       FD fd
+#       integer fd
 #       list data {
 #                  character header
 #                  (maybe) (any) payload

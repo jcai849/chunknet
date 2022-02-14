@@ -103,15 +103,14 @@ is_unaccounted_prereq <- function(data_href) {
 
 add_audience <- function(data_href, fd) {
 	log("Adding FD %d to the Audience of data href %s", fd, data_href)
-	Worker$Audience <- rbind(Worker$Audience, data.frame(fd=unclass(fd), data_href=data_href))
+	Worker$Audience <- rbind(Worker$Audience, data.frame(fd=fd, data_href=data_href))
 }
 
 send_audience <- function(data_href) {
 	fds <- Worker$Audience$fd[Worker$Audience$data_href %in% data_href]
-	class(fds) <- "FD"
 	data <- get_data(data_href)
 	log("Sending %s to Audience member FD %d", data_href, fds)
-	for (fd in fds) respond(structure(fd, class="FD"), list(header=paste0("POST /data/", data_href), payload=data))
+	lapply(fds, respond, list(header=paste0("POST /data/", data_href), payload=data))
 }
 
 data_has_audience <- function(data_href) {
