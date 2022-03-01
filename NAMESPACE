@@ -1,2 +1,4 @@
 export(push, remote_call, pull,
        worker, locator, LOCATOR)
+S3method(push, default)
+S3method(push, Chunk)

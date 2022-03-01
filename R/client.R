@@ -52,11 +52,17 @@ request_pull <- function(href) {
 	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, location$address, location$port)
 }
 
-pull <- function(href) {
-	fd <- request_pull(href)
+pull <- function(x, ...) UseMethod("pull", x)
+
+pull.default <- function(x, ...) {
+	fd <- request_pull(x)
 	event <- orcv::await_response(fd)
 	orcv::event_complete(event$fd)
 	event$data$payload
+}
+
+pull.Chunk <- function(x, ...) {
+	pull(x$href)
 }
 
 pull_eventually <- function(href) {
