@@ -14,7 +14,7 @@ get_all_locations <- function() {
 	fd <- orcv::event_push(list(header="GET /nodes"), LOCATOR()$address, LOCATOR()$port)
 	event <- orcv::await_response(fd)
 	orcv::event_complete(event)
-	event$data
+	event$data[order(event$data$loading), c("address", "port")]
 }
 
 push <- function(value, location) {
@@ -28,7 +28,7 @@ push <- function(value, location) {
 	structure(list(href=href, generator_href="."), class="Chunk")
 }
 
-remote_call <- function(procedure, arguments) {
+remote_call <- function(procedure, arguments, alignments) {
 	chunk_args <- sapply(arguments, inherits, "Chunk")
 	location <- if (!any(chunk_args)) {
 		get_all_locations()[1,]

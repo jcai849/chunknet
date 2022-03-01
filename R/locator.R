@@ -23,13 +23,13 @@ getDataLocs <- function(event) {
 
 Locator <- new.env()
 with(Locator, {
-	Nodes <- data.frame(node_href=character(), address=character(), port=integer())
+	Nodes <- data.frame(node_href=character(), address=character(), port=integer(), loading=integer())
 	Data <- data.frame(node_href=character(), data_href=character())
 })
 
 add_node <- function(address, port) {
 	log("Adding node of address %s and port %d", address, port)
-	Locator$Nodes <- rbind(Locator$Nodes, data.frame(node_href=uuid::UUIDgenerate(), address=address, port=port))
+	Locator$Nodes <- rbind(Locator$Nodes, data.frame(node_href=uuid::UUIDgenerate(), address=address, port=port, loading=0L))
 }
 
 get_locs <- function(node_hrefs) {
@@ -38,8 +38,8 @@ get_locs <- function(node_hrefs) {
 }
 
 get_all_nodes <- function() {
-	log("Returning locations of all known nodes")
-	Locator$Nodes[, c("address", "port")]
+	log("Returning locations of all known nodes and their loadings")
+	Locator$Nodes[, c("address", "port", "loading")]
 }
 
 get_node <- function(address, port) {
@@ -50,6 +50,7 @@ get_node <- function(address, port) {
 add_data <- function(data_hrefs, node_hrefs) {
 	log("Adding data href %s to node %s", data_hrefs, node_hrefs)
 	Locator$Data <- rbind(Locator$Data, data.frame(node_href=node_hrefs, data_href=data_hrefs))
+	Locator$Nodes[node_href == node_hrefs,]$loading <- Locator$Nodes[node_href == node_hrefs,]$loading + 1
 }
 
 get_data_nodes <- function(data_hrefs) {
