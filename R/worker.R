@@ -38,7 +38,7 @@ putComputationReady <- function(event) {
 	computation <- get_data(computation_href)
 	prereq_hrefs <- sapply(computation$arguments, "[[", "href")
 	arguments <- lapply(prereq_hrefs, get_data)
-	result <- do.call(computation$procedure, arguments)
+	result <- tryCatch(do.call(computation$procedure, arguments), error=identity)
 	event_internal_push(paste0("POST /data/", computation$output), result)
 }
 
