@@ -1,5 +1,5 @@
-.PHONY: tag install test
-all: tag install test
+.PHONY: tags install test
+all: tags install test
 install: /usr/local/lib/R/library/largerscale/
 /usr/local/lib/R/library/largerscale/: R/* NAMESPACE DESCRIPTION
 	R CMD INSTALL .
