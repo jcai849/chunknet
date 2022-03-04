@@ -50,7 +50,8 @@ get_node <- function(address, port) {
 add_data <- function(data_hrefs, node_hrefs) {
 	log("Adding data href %s to node %s", data_hrefs, node_hrefs)
 	Locator$Data <- rbind(Locator$Data, data.frame(node_href=node_hrefs, data_href=data_hrefs))
-	Locator$Nodes[node_href == node_hrefs,]$loading <- Locator$Nodes[node_href == node_hrefs,]$loading + 1
+	relevant_nodes <- Locator$Nodes$node_href == node_hrefs
+	Locator$Nodes[relevant_nodes,]$loading <- Locator$Nodes[relevant_nodes,]$loading + 1
 }
 
 get_data_nodes <- function(data_hrefs) {
