@@ -6,4 +6,4 @@ install: /usr/local/lib/R/library/largerscale/
 tags:
 	uctags -R 
 test:
-	cd tests && ./test
+	cd tests && ./test && pkill R
