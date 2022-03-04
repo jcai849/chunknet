@@ -21,6 +21,9 @@ push <- function(value, location) {
 	href <- uuid::UUIDgenerate()
 	if (missing(location)) {
 		location <- get_all_locations()[1,]
+	} else if (is.character(location)) { # if just the hostname
+		all_locs <- get_all_locations()
+		location <- all_locs[all_locs$address == location,][1,]
 	}
 	log("Pushing data of %s to address %s port %d", href, location$address, location$port) 
 	event_external_push(paste0("POST /data/", href), value, location$address, location$port)
