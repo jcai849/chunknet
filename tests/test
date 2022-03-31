@@ -3,5 +3,4 @@
 Rscript locator.R &
 Rscript worker1.R &
 Rscript worker2.R &
-sleep 2 && Rscript master.R &&
-pkill R
+sleep 2 && Rscript master.R

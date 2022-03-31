@@ -1,5 +1,6 @@
 node <- function(init_function) {
-        function(address, port, init_arg) {
+        function(address, port, init_arg, verbose=FALSE) {
+		options("largerscaleVerbose" = verbose)
                 SELF(address, port)
                 orcv::start(SELF()$port)
                 init_function(init_arg)
@@ -33,9 +34,10 @@ worker_init <- function(locator_location) {
 }
 
 locator <- node(locator_init)
-worker <- function(address, port, locator_address, locator_port) {
+worker <- function(address, port, locator_address, locator_port, verbose=FALSE) {
 	node(worker_init)(address, port,
-			  list(address=locator_address, port=locator_port))
+			  list(address=locator_address, port=locator_port),
+			  verbose)
 }
 
 loc_cache <- function() {
@@ -54,7 +56,6 @@ SELF <- loc_cache()
 LOCATOR <- loc_cache()
 
 log <- function(msg, ...) {
-    cat(paste0(format(Sys.time(), "%H:%M:%OS9 "),
-        sprintf(msg, ...), "\n"))
+	if (getOption("largerscaleVerbose", default=FALSE))
+		cat(paste0(format(Sys.time(), "%H:%M:%OS9 "), sprintf(msg, ...), "\n"))
 }
-
