@@ -1,6 +1,7 @@
 #!/bin/sh
 
-Rscript locator.R & sleep 1 &&
-Rscript worker1.R & sleep 1 &&
-Rscript worker2.R & sleep 1 &&
-sleep 2 && Rscript master.R
+Rscript locator.R &
+Rscript worker1.R &
+Rscript worker2.R &
+sleep 2 && Rscript master.R &&
+pkill R
