@@ -39,7 +39,6 @@ putComputationReady <- function(event) {
 	prereq_hrefs <- sapply(computation$arguments, "[[", "href")
 	arguments <- lapply(prereq_hrefs, get_data)
 	result <- tryCatch(do.call(computation$procedure, arguments), error=identity)
-        Worker$Work <- Worker$Work[!Worker$Work$computation_ready_href %in% computation_href,,drop=FALSE] # cleanup
         lapply(prereq_hrefs, guarded_delete) # cleanup
 	event_internal_push(paste0("POST /data/", computation$output), result)
 }
@@ -56,7 +55,6 @@ with(Worker, {
 	Stage <- data.frame(unaccounted_prereq_href=character(),
 			    pending_computation_href=character())
 	Audience <- data.frame(fd=integer(), data_href=character())
-        Work <- data.frame(computation_ready_href=character())
         Bin <- data.frame(data_to_go_href=character())
 })
 
@@ -77,7 +75,6 @@ get_data <- function(href) {
 
 set_computation_ready <- function(href) {
 	log("Setting computation %s as ready", href)
-	Worker$Work <- rbind(Worker$Work, data.frame(computation_ready_href=href))
 	event_internal_push(paste0("PUT /computation-ready/", href), NULL)
 }
 
@@ -134,8 +131,7 @@ mark_for_deletion <- function(href) {
 }
 
 guarded_delete <- function(href) {
-       if (!(href %in% get_arg_hrefs(Worker$Stage$pending_computation_href) |
-             href %in% get_arg_hrefs(Worker$Work$computation_ready_href)))
+       if (!href %in% get_arg_hrefs(Worker$Stage$pending_computation_href)) 
                delete_data(href)
 }
 
