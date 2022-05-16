@@ -39,16 +39,25 @@ putComputationReady <- function(event) {
 	prereq_hrefs <- sapply(computation$arguments, "[[", "href")
 	arguments <- lapply(prereq_hrefs, get_data)
 	result <- tryCatch(do.call(computation$procedure, arguments), error=identity)
+        Worker$Work <- Worker$Work[!computation_href %in% Worker$Work$computation_ready_href,,drop=FALSE] # cleanup
+        lapply(prereq_hrefs, guarded_delete) # cleanup
 	event_internal_push(paste0("POST /data/", computation$output), result)
 }
 
+deleteData <- function(event) {
+       data_href <- extract(event$data$header, "DELETE /data/(.*)")
+       mark_for_deletion(data_href)
+       guarded_delete(data_href)
+}
 
 Worker <- new.env()
 with(Worker, {
-	Store <- new.env() # data_href -> value
+	Store <- new.env(emptyenv()) # data_href -> value
 	Stage <- data.frame(unaccounted_prereq_href=character(),
 			    pending_computation_href=character())
 	Audience <- data.frame(fd=integer(), data_href=character())
+        Work <- data.frame(computation_ready_href=character())
+        Bin <- data.frame(data_to_go_href=character())
 })
 
 store_data <- function(href, value) {
@@ -68,6 +77,7 @@ get_data <- function(href) {
 
 set_computation_ready <- function(href) {
 	log("Setting computation %s as ready", href)
+	Worker$Work <- rbind(Worker$Work, data.frame(computation_ready_href=href))
 	event_internal_push(paste0("PUT /computation-ready/", href), NULL)
 }
 
@@ -91,7 +101,7 @@ register_data <- function(data_href) {
 	log("Registering data %s and checking associated pending computations", data_href)
 	now_accounted <- Worker$Stage$unaccounted_prereq_href %in% data_href
 	associated_computations <- Worker$Stage$pending_computation_href[now_accounted]
-	Worker$Stage <- Worker$Stage[!now_accounted,]
+	Worker$Stage <- Worker$Stage[!now_accounted,,drop=FALSE]
 	ready_computations <- associated_computations[!associated_computations %in% Worker$Stage$pending_computation_href]
 	lapply(ready_computations, set_computation_ready)
 }
@@ -116,4 +126,25 @@ send_audience <- function(data_href) {
 data_has_audience <- function(data_href) {
 	log("Checking if data %s has associated audience", data_href)
 	data_href %in% Worker$Audience$data_href
+}
+
+mark_for_deletion <- function(href) {
+       log("Marking %s for deletion", href)
+       Worker$Bin <- rbind(Worker$Bin, data.frame(data_to_go_href=href))
+}
+
+guarded_delete <- function(href) {
+       if (!(href %in% get_arg_hrefs(Worker$Stage$pending_computation_href) |
+             href %in% get_arg_hrefs(Worker$Work$computation_ready_href)))
+               delete_data(href)
+}
+
+get_arg_hrefs <- function(computation_hrefs) {
+       if (length(computation_hrefs)) sapply(computation_hrefs, function(href) sapply(get_data(href)$arguments, "[[", "href"))
+}
+
+delete_data <- function(href) {
+       log("Deleting data under href %s", href)
+       if (length(href)) rm(list=href, pos=Worker$Store)
+       Worker$Bin <- Worker$Bin[! href %in% Worker$Bin$data_to_go,, drop=FALSE]
 }
