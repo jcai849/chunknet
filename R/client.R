@@ -1,3 +1,13 @@
+Chunk <- function(href, generator_href) {
+       stopifnot(is.character(href),
+                 is.character(generator_href))
+       chunk <- structure(new.env(parent=emptyenv(), size=2L), class="Chunk")
+       #reg.finalizer(chunk, delete)
+       chunk$href <- href
+       chunk$generator_href <- generator_href
+       chunk
+}
+
 post_location <- function(href, location) {
 	log("Sending location of %s to Locator", href)
 	event_external_push(paste0("POST /data/", href), location, LOCATOR()$address, LOCATOR()$port)
@@ -28,7 +38,7 @@ push <- function(value, location) {
 	log("Pushing data of %s to address %s port %d", href, location$address, location$port) 
 	event_external_push(paste0("POST /data/", href), value, location$address, location$port)
 	post_location(href, location)
-	structure(list(href=href, generator_href="."), class="Chunk")
+	Chunk(href, ".")
 }
 
 remote_call <- function(procedure, arguments, alignments) {
@@ -47,7 +57,7 @@ remote_call <- function(procedure, arguments, alignments) {
 	event_external_push(paste0("PUT /computation/", computation$href), computation, location$address, location$port)
 	post_location(computation$href, location)
 	post_location(computation$output_href, location)
-	structure(list(generator_href = computation$href, href=computation$output_href), class="Chunk") 
+	Chunk(computation$output_href, computation$href)
 }
 
 request_pull <- function(href) {
