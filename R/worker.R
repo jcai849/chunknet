@@ -39,7 +39,7 @@ putComputationReady <- function(event) {
 	prereq_hrefs <- sapply(computation$arguments, "[[", "href")
 	arguments <- lapply(prereq_hrefs, get_data)
 	result <- tryCatch(do.call(computation$procedure, arguments), error=identity)
-        Worker$Work <- Worker$Work[!computation_href %in% Worker$Work$computation_ready_href,,drop=FALSE] # cleanup
+        Worker$Work <- Worker$Work[!Worker$Work$computation_ready_href %in% computation_href,,drop=FALSE] # cleanup
         lapply(prereq_hrefs, guarded_delete) # cleanup
 	event_internal_push(paste0("POST /data/", computation$output), result)
 }
@@ -146,5 +146,5 @@ get_arg_hrefs <- function(computation_hrefs) {
 delete_data <- function(href) {
        log("Deleting data under href %s", href)
        if (length(href)) rm(list=href, pos=Worker$Store)
-       Worker$Bin <- Worker$Bin[! href %in% Worker$Bin$data_to_go,, drop=FALSE]
+       Worker$Bin <- Worker$Bin[! Worker$Bin$data_to_go %in% href,, drop=FALSE]
 }
