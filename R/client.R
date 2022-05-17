@@ -42,9 +42,7 @@ remote_call <- function(procedure, arguments, alignments) {
 
 	arguments <- lapply(arguments, function(arg)
 	if (inherits(arg, "Chunk")) arg else transient_push(arg, data.frame(address=location$address, port=location$port)))
-	computation <- structure(list(procedure=procedure, arguments=arguments, alignments=NULL,
-				      href=uuid::UUIDgenerate(), output_href=uuid::UUIDgenerate()),
-				 class="Computation")
+	computation <- Computation(procedure, arguments, NULL, uuid::UUIDgenerate(), uuid:UUIDgenerate())
 	event_external_push(paste0("PUT /computation/", computation$href), computation, location$address, location$port)
 	post_location(computation$href, location)
 	post_location(computation$output_href, location)
