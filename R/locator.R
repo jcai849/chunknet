@@ -1,3 +1,8 @@
+deleteDataLocs <- function(event) {
+        data_hrefs <- extract(event$data$header, "DELETE /data/(.*)")
+        delete_data_locs(data_hrefs)
+}
+
 postNode <- function(event) {
 	payload <- event$data$payload 
 	add_node(payload$address, payload$port)
@@ -57,4 +62,8 @@ add_data <- function(data_hrefs, node_hrefs) {
 get_data_nodes <- function(data_hrefs) {
 	log("Getting locations of data identified by %s", data_hrefs)
 	Locator$Data$node_href[Locator$Data$data_href %in% data_hrefs]
+}
+
+delete_data_locs <- function(data_hrefs) {
+        Locator$Data <- Locator$Data[!Locator$Data$data_href %in% data_hrefs,]
 }

@@ -18,6 +18,8 @@ locator_init <- function(...) {
 	on("GET /nodes", getNodes)
 	on("POST /data/*", non_responding(postDataLoc))
 	on("GET /data/*", getDataLocs)
+	on("DELETE /data/*", non_responding(deleteDataLocs))
+        on("EXIT", non_responding(function(...) q("no")))
 }
 
 worker_init <- function(locator_location) {
