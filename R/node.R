@@ -43,11 +43,11 @@ worker <- function(address, port, locator_address, locator_port, verbose=FALSE) 
 }
 
 loc_cache <- function() {
-	ADDRESS <- NULL
-	PORT <- NULL
+	ADDRESS <- character()
+	PORT <- integer()
 	function(address, port) {
 	    if (missing(address) && missing(port)) {
-		list(address=ADDRESS, port=PORT)
+		data.frame(address=ADDRESS, port=PORT)
 	    } else {
 		ADDRESS <<- address
 		PORT    <<- port
