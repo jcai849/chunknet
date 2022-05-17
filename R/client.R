@@ -103,3 +103,12 @@ pull_eventually <- function(href) {
 	fd <- request_pull(href)
 	orcv::monitor_response(fd)
 }
+
+kill_all_nodes <- function() {
+        all_locations <- get_all_locations()
+        for (i in seq(NROW(all_locations)))
+                 event_external_push("EXIT", NULL, all_locations[i, "address"], all_locations[i, "port"])
+        event_external_push("EXIT", NULL, LOCATOR()$address, LOCATOR()$port)
+        invisible(NULL)
+}
+
