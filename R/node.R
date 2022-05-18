@@ -25,14 +25,13 @@ locator_init <- function(...) {
 worker_init <- function(locator_location) {
 	log("Worker initialising...")
 	LOCATOR(locator_location$address, locator_location$port)
-	log("Sending location of address %s and port %d to locator node",
-	    SELF()$address, SELF()$port)
-	event_external_push("POST /node", SELF(),
-			LOCATOR()$address, LOCATOR()$port)
+	log("Sending location of address %s and port %d to locator node", SELF()$address, SELF()$port)
+	event_external_push("POST /node", SELF(), LOCATOR()$address, LOCATOR()$port)
 	on("POST /data/*", non_responding(postData))
 	on("GET /data/*", getData)
 	on("PUT /computation/*", non_responding(putComputation))
-	on("PUT /computation-ready/*", non_responding(putComputationReady))
+        on("DELETE /data/*", non_responding(deleteData))
+        on("EXIT", non_responding(function(...) q("no")))
 }
 
 locator <- node(locator_init)
