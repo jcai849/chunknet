@@ -1,39 +1,59 @@
-Chunk <- function(href, generator_href) {
-       stopifnot(is.character(href),
-                 is.character(generator_href))
-       chunk <- structure(new.env(parent=emptyenv(), size=2L), class="Chunk")
-       chunk$href <- href
-       chunk$generator_href <- generator_href
-       chunk
+Href <- function(id=uuid::UUIDgenerate()) {
+       stopifnot(is.character(href))
+       href <- structure(new.env(parent=emptyenv()), class="Href")
+       href$href <- href
+       href
 }
 
-TransientChunk <- function(href, generator_href) {
-        chunk <- Chunk(href, generator_href)
-        class(chunk) <- c("TransientChunk", class(chunk))
-        chunk
+ChunkReference <- function(id=uuid::UUIDgenerate()) {
+	chunkref <- Href(id)
+	class(chunk) <- c("ChunkReference", class(chunk))
+	reg.finalizer(chunkref, delete)
+	chunkref
 }
 
-StableChunk <- function(href, generator_href) {
-        chunk <- Chunk(href, generator_href)
-        class(chunk) <- c("StableChunk", class(chunk))
-        reg.finalizer(chunk, delete)
-        chunk
+Chunk <- function(id=uuid::UUIDgenerate(), data) {
+	chunk <- Href(id)
+	class(chunk) <- c("Chunk", class(chunk))
+	chunk$data <- data
+	chunk
 }
 
-delete <- function(chunk) {
-        locations <- get_location(chunk)
-        for (i in seq(NROW(locations))) {
-                event_external_push(paste0("DELETE /data/", chunk$href), NULL, locations[i, "address"], locations[i, "port"])
-        }
-        event_external_push(paste0("DELETE /data/", chunk$href), NULL, LOCATOR()$address, LOCATOR()$port)
+ChunkStub <- function(id=uuid::UUIDgenerate(), audience=integer()) {
+	stopifnot(is.integer(audience))
+	stub <- Href(id)
+	class(stub) <- c("ChunkStub", class(stub))
+	stub$audience <- audience
 }
 
-Computation <- function(procedure, arguments, alignments, href, output_href) {
-	comp <- structure(new.env(parent=emptyenv(), size=5L), class="Computation")
-	comp$procedure <- procedure
+ComputationReference <- function(procedure, arguments) {
+	stopifnot(is.character(procedure) || is.function(procedure))
+	stopifnot(is.list(arguments))
+	stopifnot(sapply(arguments, inherits, "ChunkReference"))
+	compref <- Href()
+	class(compref) <- c("ComputationReference", class(compref))
+	compref$procedure <- procedure
+	compref$output_href <- uuid::UUIDgenerate()
+	compref$arguments <- arguments
+	compref
+}
+
+Computation <- function(ComputationReference, arguments) {
+	stopifnot(is.character(procedure) || is.function(procedure))
+	stopifnot(is.list(arguments))
+	stopifnot(sapply(arguments, inherits, c("Chunk", "ChunkStub")))
+	comp <- ComputationReference
 	comp$arguments <- arguments
-	comp$alignments <- alignments
-	comp$href <- href
-	comp$output_href <- output_href
+	class(comp) <- c("Computation", class(comp))
 	comp
+}
+
+delete <- function(x) UseMethod("delete", x)
+
+delete.ChunkReference <- function(x) {
+        locations <- get_location(x)
+        for (i in seq(NROW(locations))) {
+                event_external_push(paste0("DELETE /data/", x$href), NULL, locations[i, "address"], locations[i, "port"])
+        }
+        event_external_push(paste0("DELETE /data/", x$href), NULL, LOCATOR()$address, LOCATOR()$port)
 }

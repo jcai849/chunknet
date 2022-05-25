@@ -1,68 +1,93 @@
 Worker <- new.env()
 with(Worker, {
 	DataStore <- new.env(emptyenv()) # data_href -> chunk (value/stub)
-	CompStore <- new.env(emptyenv()) # (prereq|comp)_href -> computation
+	CompStore <- new.env(emptyenv()) # (prereq|comp)_href -> env of computations
 })
 
 postData <- function(event) {
-	data_href <- extract(event$data$header, "POST /data/(.*)")
+	href <- extract(event$data$header, "POST /data/(.*)")
 	data <- event$data$payload
-	if (exists(data_href, Worker$DataStore)) {
-		stub <- get(data_href, Worker$DataStore)
-		chunk <- add_data(stub, data)
-		respond_audience(chunk)
-	} else {
-		assign(data_href, Chunk(data), worker$DataStore)
+	register_posted_data(href, data)
+}
+
+register_posted_data <- function(href, data) {
+	chunk <- Chunk(href, data)
+	if (exists(href, Worker$DataStore)) {
+		stub <- get(href, Worker$DataStore)
+		respond_audience(chunk, stub$audience)
 	}
-	if (exists(data_href, Worker$CompStore)) {
+	assign(href, chunk, Worker$DataStore)
+	if (exists(href, Worker$CompStore)) {
 		computations <- get(data_href, Worker$CompStore)
-		ready_comps <- sapply(computations, all_data_avail)
-		lapply(computations[ready_comps], run_comp)
+		eapply(computations, function(comp) if (all(data_avail(comp))) run_comp(comp))
 	}
 }
 
-# TODO: add_data.Stub, all_data_avail.Computation, run_comp.Computation
+data_avail <- function(computation) {
+	stopifnot(inherits(computation, "Computation"))
+	sapply(computation$arguments, inherits, "Chunk")
+}
 
 getData <- function(event) {
 	data_href <- extract(event$data$header, "GET /data/(.*)")
-	if (! exists(data_href, Worker$DataStore)) {
-		data <- assign(data_href, Stub(data_href, audience), Worker$DataStore)
-	} else {
-		data <- get(data_href, Worker$DataStore)
-		respond_audience(data, event$fd)
-	}
+	audience <- event$fd
+	data <- register_referenced_data(data_href, audience)
+	respond_audience(data, audience)
 }
 
-respond_audience <- function(x, ...) UseMethod(x, "respond_audience")
-respond_audience.Stub <- function(x, ...) {
-	x$audience <- c(x$audience, list(...))
+register_referenced_data <- function(href, audience=integer()) { # fills out datastore
+	if (!exists(href, Worker$DataStore)) {
+		pull_eventually(href)
+		assign(href, Stub(href, audience), Worker$DataStore)
+	} else get(href, Worker$DataStore)
 }
-respond_audience.Chunk <- function(x, ...) {
-	lapply(c(x$audience, list(...)),
+
+respond_audience <- function(x, audience, ...) UseMethod(x, "respond_audience")
+respond_audience.Stub <- function(x, audience, ...) {
+	x$audience <- c(x$audience, audience)
+}
+respond_audience.Chunk <- function(x, audience, ...) {
+	lapply(audience,
 	       respond,
-	       list(header=paste0("POST /data/", x$data_href), payload=x$data))
+	       list(header=paste0("POST /data/", x$href), payload=x$data))
 }
 
 putComputation <- function(event) {
 	computation_href <- extract(event$data$header, "PUT /computation/(.*)")
-	computation <- event$data$payload
-	# add to compstore under computation href
-	# store comp in compstore under all prereq names
-	# add finaliser to computation that removes transient prereq data from store
-	# if no args, run comp
-	# else:
-	# - in datastore for prereqs if data doesn't exist, make stub and request it (pull_eventually), then replace all prereq references (transient and stable) in computation with their datastore forms
-	# - if all values available, run comp
+	compref <- event$data$payload
+	arguments <- lapply(compref$arguments, register_prereq, compref)
+	computation <- Computation(compref, arguments)
+	if (!length(computation$arguments) || all(data_avail(computation)) run_comp(computation)
+}
+
+register_prereq <- function(prereq, comp) {
+	register_prereq(prereq, comp)
+	register_referenced_data(prereq$href)
+}
+
+register_prereq <- function(prereq, comp) { # fills out compstore
+	associated_comps <- if (exists(prereq$href, Worker$CompStore)) {
+				get(prereq$href, Worker$CompStore)
+			    } else {
+				assign(prereq$href, new.env(parent=emptyenv()), Worker$CompStore)
+			    }
+	assign(comp$href, comp, associated_comps)
 }
 
 run_comp <- function(computation) {
 	result <- tryCatch(do.call(computation$procedure, computation$arguments), error=identity)
-	# TODO remove comp from compstore under own name and remove from all prereq lists (implicitly triggering gc)
-	event_internal_push(paste0("POST /data/", computation$output), result)
+	lapply(computation$arguments, prereq_cleanup) # some way to do implicitly with finaliser?
+	register_posted_data(computation$href, result)
+}
+
+prereq_cleanup <- function(prereq) {
+	comprefs <- get(prereq$href, Worker$CompStore)
+	rm(list=computation$href, pos=comprefs)
+	if (!length(comprefs)) rm(list=prereq$href, pos=Worker$CompStore)
 }
 
 deleteData <- function(event) {
        data_href <- extract(event$data$header, "DELETE /data/(.*)")
        log("Deleting data under href %s", href)
-       if (length(href)) rm(list=href, pos=Worker$Store)
+       if (length(href)) rm(list=href, pos=Worker$DataStore)
 }

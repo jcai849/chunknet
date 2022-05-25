@@ -17,8 +17,29 @@ get_all_locations <- function() {
 	event$data[order(event$data$loading), c("address", "port")]
 }
 
-transient_push <- function(value, location) {
-	href <- uuid::UUIDgenerate()
+remote_call <- function(procedure, arguments) {
+	chunkref_args <- sapply(arguments, inherits, "ChunkReference")
+        location <- if (!any(chunkref_args)) {
+                get_all_locations()[1,]
+        } else {
+                get_location(arguments[chunkref_args][[1]]$href)
+        }
+	arguments <- lapply(arguments, function(arg)
+                if (inherits(arg, "ChunkReference")) arg else push(arg, data.frame(address=location$address, port=location$port)))
+
+	computation <- Computation(procedure, arguments)
+	event_external_push(paste0("PUT /computation/", computation$href), computation, location$address, location$port)
+	post_location(computation$output_href, location)
+	ChunkReference(computation$output_href)
+}
+
+request_pull <- function(href) {
+	location <- get_location(href)[1,]
+	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, location$address, location$port)
+}
+
+push <- function(value, location) {
+	chunkref <- ChunkReference()
 	if (missing(location)) {
 		log("push missing location. Accessing all locations")
                 location <- get_all_locations()[1,]
@@ -27,31 +48,9 @@ transient_push <- function(value, location) {
                 all_locs <- get_all_locations()
                 location <- all_locs[all_locs$address == location,][1,]
         }
-	log("Pushing transient data of %s to address %s port %d", href, location$address, location$port) 
+	log("Pushing data of %s to address %s port %d", chunkref$href, location$address, location$port) 
 	event_external_push(paste0("POST /data/", href), value, location$address, location$port)
-	TransientChunk(href, ".")
-}
-
-remote_call <- function(procedure, arguments, alignments) {
-	chunk_args <- sapply(arguments, inherits, "Chunk")
-	location <- if (!any(chunk_args)) {
-		get_all_locations()[1,]
-	} else {
-		get_location(arguments[chunk_args][[1]]$href)
-	}
-
-	arguments <- lapply(arguments, function(arg)
-	if (inherits(arg, "Chunk")) arg else transient_push(arg, data.frame(address=location$address, port=location$port)))
-	computation <- Computation(procedure, arguments, NULL, uuid::UUIDgenerate(), uuid:UUIDgenerate())
-	event_external_push(paste0("PUT /computation/", computation$href), computation, location$address, location$port)
-	post_location(computation$href, location)
-	post_location(computation$output_href, location)
-	StableChunk(computation$output_href, computation$href)
-}
-
-request_pull <- function(href) {
-	location <- get_location(href)[1,]
-	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, location$address, location$port)
+	chunkref
 }
 
 pull <- function(x, ...) UseMethod("pull", x)
@@ -63,7 +62,7 @@ pull.default <- function(x, ...) {
 	event$data$payload
 }
 
-pull.Chunk <- function(x, ...) {
+pull.ChunkReference <- function(x, ...) {
 	pull(x$href)
 }
 
