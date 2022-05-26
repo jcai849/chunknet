@@ -57,7 +57,7 @@ putComputation <- function(event) {
 	compref <- event$data$payload
 	arguments <- lapply(compref$arguments, register_prereq, compref)
 	computation <- Computation(compref, arguments)
-	if (!length(computation$arguments) || all(data_avail(computation)) run_comp(computation)
+	if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
 }
 
 register_prereq <- function(prereq, comp) {
