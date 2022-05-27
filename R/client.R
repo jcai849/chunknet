@@ -27,10 +27,10 @@ remote_call <- function(procedure, arguments) {
 	arguments <- lapply(arguments, function(arg)
                 if (inherits(arg, "ChunkReference")) arg else push(arg, data.frame(address=location$address, port=location$port)))
 
-	computation <- Computation(procedure, arguments)
-	event_external_push(paste0("PUT /computation/", computation$href), computation, location$address, location$port)
-	post_location(computation$output_href, location)
-	ChunkReference(computation$output_href)
+	compref <- ComputationReference(procedure, arguments)
+	event_external_push(paste0("PUT /computation/", compref$href), compref, location$address, location$port)
+	post_location(compref$output_href, location)
+	ChunkReference(compref$output_href)
 }
 
 request_pull <- function(href) {
@@ -48,8 +48,9 @@ push <- function(value, location) {
                 all_locs <- get_all_locations()
                 location <- all_locs[all_locs$address == location,][1,]
         }
+	post_location(chunkref$href, location)
 	log("Pushing data of %s to address %s port %d", chunkref$href, location$address, location$port) 
-	event_external_push(paste0("POST /data/", href), value, location$address, location$port)
+	event_external_push(paste0("POST /data/", chunkref$href), value, location$address, location$port)
 	chunkref
 }
 

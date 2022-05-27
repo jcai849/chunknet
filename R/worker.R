@@ -18,9 +18,17 @@ register_posted_data <- function(href, data) {
 	}
 	assign(href, chunk, Worker$DataStore)
 	if (exists(href, Worker$CompStore)) {
-		computations <- get(data_href, Worker$CompStore)
-		eapply(computations, function(comp) if (all(data_avail(comp))) run_comp(comp))
+		computations <- get(href, Worker$CompStore)
+		eapply(computations, update_comp_args, chunk)
 	}
+}
+
+update_comp_args <- function(computation, chunk) {
+	stopifnot(inherits(computation, "Computation"))
+	stopifnot(inherits(chunk, "Chunk"))
+	computation$arguments[[match(chunk$href, sapply(computation$arguments, "[[", "href"))]] <- chunk
+
+	if (all(data_avail(computation))) run_comp(computation)
 }
 
 data_avail <- function(computation) {
@@ -35,15 +43,8 @@ getData <- function(event) {
 	respond_audience(data, audience)
 }
 
-register_referenced_data <- function(href, audience=integer()) { # fills out datastore
-	if (!exists(href, Worker$DataStore)) {
-		pull_eventually(href)
-		assign(href, Stub(href, audience), Worker$DataStore)
-	} else get(href, Worker$DataStore)
-}
-
-respond_audience <- function(x, audience, ...) UseMethod(x, "respond_audience")
-respond_audience.Stub <- function(x, audience, ...) {
+respond_audience <- function(x, audience, ...) UseMethod("respond_audience", x)
+respond_audience.ChunkStub <- function(x, audience, ...) {
 	x$audience <- c(x$audience, audience)
 }
 respond_audience.Chunk <- function(x, audience, ...) {
@@ -55,17 +56,18 @@ respond_audience.Chunk <- function(x, audience, ...) {
 putComputation <- function(event) {
 	computation_href <- extract(event$data$header, "PUT /computation/(.*)")
 	compref <- event$data$payload
-	arguments <- lapply(compref$arguments, register_prereq, compref)
+	arguments <- lapply(compref$arguments, register_arg, compref)
 	computation <- Computation(compref, arguments)
+	assign(computation$output_href, ChunkStub(computation$output_href), Worker$DataStore)
 	if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
 }
 
-register_prereq <- function(prereq, comp) {
-	register_prereq(prereq, comp)
-	register_referenced_data(prereq$href)
+register_arg <- function(prereq, comp) {
+	register_prereq(prereq, comp)		# fills out compstore
+	register_referenced_data(prereq$href)	# fills out datastore
 }
 
-register_prereq <- function(prereq, comp) { # fills out compstore
+register_prereq <- function(prereq, comp) {
 	associated_comps <- if (exists(prereq$href, Worker$CompStore)) {
 				get(prereq$href, Worker$CompStore)
 			    } else {
@@ -74,20 +76,28 @@ register_prereq <- function(prereq, comp) { # fills out compstore
 	assign(comp$href, comp, associated_comps)
 }
 
-run_comp <- function(computation) {
-	result <- tryCatch(do.call(computation$procedure, computation$arguments), error=identity)
-	lapply(computation$arguments, prereq_cleanup) # some way to do implicitly with finaliser?
-	register_posted_data(computation$href, result)
+register_referenced_data <- function(href, audience=integer()) {
+	if (!exists(href, Worker$DataStore)) {
+		pull_eventually(href)
+		assign(href, ChunkStub(href, audience), Worker$DataStore)
+	} else get(href, Worker$DataStore)
 }
 
-prereq_cleanup <- function(prereq) {
+run_comp <- function(computation) {
+	log("Running computation")
+	args <- lapply(computation$arguments, "[[", "data")
+	result <- tryCatch(do.call(computation$procedure, args), error=identity)
+	lapply(computation$arguments, prereq_cleanup, computation) # some way to do implicitly with finaliser?
+	register_posted_data(computation$output_href, result)
+}
+
+prereq_cleanup <- function(prereq, associated_computation) {
 	comprefs <- get(prereq$href, Worker$CompStore)
-	rm(list=computation$href, pos=comprefs)
+	rm(list=associated_computation$href, pos=comprefs)
 	if (!length(comprefs)) rm(list=prereq$href, pos=Worker$CompStore)
 }
 
 deleteData <- function(event) {
-       data_href <- extract(event$data$header, "DELETE /data/(.*)")
-       log("Deleting data under href %s", href)
+       href <- extract(event$data$header, "DELETE /data/(.*)")
        if (length(href)) rm(list=href, pos=Worker$DataStore)
 }

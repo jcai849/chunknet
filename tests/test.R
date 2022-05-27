@@ -1,5 +1,7 @@
 library(largerscale)
 
+options(largerscaleVerbose = TRUE)
+
 LOCATOR("localhost", 8999L)
 worker1 <- data.frame(address="localhost", port=9001L)
 worker2 <- data.frame(address="localhost", port=9002L)
@@ -24,3 +26,8 @@ print(pull(j))
 
 k <- remote_call("-", list(1:10, 1:2))
 print(pull(k))
+
+gc()
+
+#kill_all_nodes()
+#q("no")

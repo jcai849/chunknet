@@ -35,9 +35,7 @@ respond <- function(fd, data) {
 }
 
 next_event <- function() {
-    event <- orcv::event_pop()
-    log("Pulling Event: %s", event$data$header)
-    event
+	orcv::event_pop()
 }
 
 event_external_push_keep <- function(header, payload, address, port) {
