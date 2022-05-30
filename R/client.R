@@ -17,9 +17,12 @@ get_all_locations <- function() {
 	event$data[order(event$data$loading), c("address", "port")]
 }
 
-remote_call <- function(procedure, arguments) {
+remote_call <- function(procedure, arguments, target) {
 	chunkref_args <- sapply(arguments, inherits, "ChunkReference")
-        location <- if (!any(chunkref_args)) {
+        location <- if (!missing(target)) {
+		stopifnot(inherits(target, "ChunkReference"))
+		get_location(target$href)
+	} else if (!any(chunkref_args)) {
                 get_all_locations()[1,]
         } else {
                 get_location(arguments[chunkref_args][[1]]$href)
