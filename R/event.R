@@ -39,7 +39,7 @@ next_event <- function() {
 }
 
 event_external_push_keep <- function(header, payload, address, port) {
-	log("Pushing event: %s", header)
+	log("Pushing event: %s to %s:%d", header, address, port)
 	orcv::event_push(list(header=header, payload=payload), address, port)
 }
 
