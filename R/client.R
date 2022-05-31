@@ -4,17 +4,14 @@ post_location <- function(href, location) {
 }
 
 get_location <- function(href) {
-	fd <- orcv::event_push(list(header=paste0("GET /data/", href)), LOCATOR()$address, LOCATOR()$port)
-	event <- orcv::await_response(fd)
-	orcv::event_complete(event)
-	event$data
+	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, LOCATOR()$address, LOCATOR()$port)
+	await_final(fd)
 }
 
 get_all_locations <- function() {
-	fd <- orcv::event_push(list(header="GET /nodes"), LOCATOR()$address, LOCATOR()$port)
-	event <- orcv::await_response(fd)
-	orcv::event_complete(event)
-	event$data[order(event$data$loading), c("address", "port")]
+	fd <- event_external_push_keep(header="GET /nodes", NULL, LOCATOR()$address, LOCATOR()$port)
+	locs <- await_final(fd)
+	locs[order(locs$loading), c("address", "port")]
 }
 
 remote_call <- function(procedure, arguments, target) {
@@ -56,9 +53,7 @@ pull <- function(x, ...) UseMethod("pull", x)
 
 pull.default <- function(x, ...) {
 	fd <- request_pull(x)
-	event <- orcv::await_response(fd)
-	orcv::event_complete(event$fd)
-	event$data$payload
+	await_final(fd)$payload
 }
 
 pull.ChunkReference <- function(x, ...) {

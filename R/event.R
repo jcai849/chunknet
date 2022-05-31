@@ -52,6 +52,12 @@ event_internal_push <- function(header, payload) {
 	event_external_push(header, payload, SELF()$address, SELF()$port)
 }
 
+await_final <- function(fd) {
+	event <- orcv::await_response(fd)
+	orcv::event_complete(event)
+	event$data
+}
+
 extract <- function(text, pattern) {
 	regmatches(text, regexec(pattern, text))[[1]][-1]
 }
