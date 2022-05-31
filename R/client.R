@@ -36,11 +36,6 @@ remote_call <- function(procedure, arguments, target) {
 	ChunkReference(compref$output_href)
 }
 
-request_pull <- function(href) {
-	location <- get_location(href)[1,]
-	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, location$address, location$port)
-}
-
 push <- function(value, location) {
 	chunkref <- ChunkReference()
 	if (missing(location)) {
@@ -73,6 +68,11 @@ pull.ChunkReference <- function(x, ...) {
 pull_eventually <- function(href) {
 	fd <- request_pull(href)
 	orcv::monitor_response(fd)
+}
+
+request_pull <- function(href) {
+	location <- get_location(href)[1,]
+	fd <- event_external_push_keep(paste0("GET /data/", href), NULL, location$address, location$port)
 }
 
 kill_all_nodes <- function() {
