@@ -30,7 +30,7 @@ ChunkStub <- function(id=uuid::UUIDgenerate(), audience=integer()) {
 ComputationReference <- function(procedure, arguments) {
 	stopifnot(is.character(procedure) || is.function(procedure))
 	stopifnot(is.list(arguments))
-	stopifnot(sapply(arguments, inherits, "ChunkReference"))
+	stopifnot(all(sapply(arguments, inherits, "ChunkReference")))
 	compref <- Href()
 	class(compref) <- c("ComputationReference", class(compref))
 	compref$procedure <- procedure
@@ -42,7 +42,7 @@ ComputationReference <- function(procedure, arguments) {
 Computation <- function(ComputationReference, arguments) {
 	stopifnot(inherits(ComputationReference, "ComputationReference"))
 	stopifnot(is.list(arguments))
-	stopifnot(sapply(arguments, inherits, c("Chunk", "ChunkStub")))
+	stopifnot(all(sapply(arguments, inherits, c("Chunk", "ChunkStub"))))
 	comp <- ComputationReference
 	comp$arguments <- arguments
 	class(comp) <- c("Computation", class(comp))
