@@ -16,7 +16,6 @@ on <- function(event, handler) {
 handle <- function(event) {
     events <- names(Events)
     event_name <- event$data$header
-    log("Handling Event: %s", event_name)
     handler_name <- events[Vectorize(grepl)(glob2rx(events), event_name)]
     handler <- get(handler_name, Events)
     handler(event)
@@ -35,7 +34,9 @@ respond <- function(fd, data) {
 }
 
 next_event <- function() {
-	orcv::event_pop()
+	event <- orcv::event_pop()
+	log("Receiving event %s", event$data$header)
+	event
 }
 
 event_external_push_keep <- function(header, payload, address, port) {
