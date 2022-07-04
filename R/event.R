@@ -16,7 +16,7 @@ handle <- function(event) {
 non_responding <- function(handler) {
 	function(event) {
 		handler(event)
-		orcv::close(event)
+		close(event)
 	}
 }
 
