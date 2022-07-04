@@ -5,7 +5,7 @@ post_location <- function(href, location) {
 
 get_location <- function(href) {
 	fd <- orcv::send(LOCATOR(), paste0("GET /data/", href), keep_conn=T)
-	orcv::payload(orcv::receive(fd)))
+	orcv::payload(orcv::receive(fd))
 }
 
 get_all_locations <- function() {
