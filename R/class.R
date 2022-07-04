@@ -19,7 +19,7 @@ Chunk <- function(id=uuid::UUIDgenerate(), data) {
 	chunk
 }
 
-ChunkStub <- function(id=uuid::UUIDgenerate(), audience=integer()) {
+ChunkStub <- function(id=uuid::UUIDgenerate(), audience=list()) {
 	stopifnot(is.integer(audience))
 	stub <- Href(id)
 	class(stub) <- c("ChunkStub", class(stub))
@@ -53,9 +53,7 @@ delete <- function(x) {
 	stopifnot(inherits(x, "ChunkReference"))
         locations <- get_location(x$href)
 	log("Deleting data from location")
-        for (i in seq(NROW(locations))) {
-                event_external_push(paste0("DELETE /data/", x$href), NULL, locations[i, "address"], locations[i, "port"])
-        }
+	lapply(locations, orcv::send, paste0("DELETE /data/", x$href))
 	log("Deleting data location from locator")
-        event_external_push(paste0("DELETE /data/", x$href), NULL, LOCATOR()$address, LOCATOR()$port)
+        send(LOCATOR(), paste0("DELETE /data/", x$href))
 }
