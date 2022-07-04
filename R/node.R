@@ -1,11 +1,10 @@
 node <- function(init_function) {
-        function(address, port, init_arg, verbose=FALSE) {
+        function(address=NULL, port=0L, init_arg, verbose=FALSE) {
 		options("largerscaleVerbose" = verbose)
-                SELF(address, port)
-                orcv::start(SELF()$port)
+                orcv::start(address, port)
                 init_function(init_arg)
                 repeat {
-                        event <- next_event()
+                        event <- orcv::receive(keep_conn=TRUE)
                         handle(event)
                         log("...DONE")
                 }
@@ -21,39 +20,26 @@ locator_init <- function(...) {
 	on("DELETE /data/*", non_responding(deleteDataLocs))
         on("EXIT", non_responding(function(...) q("no")))
 }
-
 worker_init <- function(locator_location) {
 	log("Worker initialising...")
-	LOCATOR(locator_location$address, locator_location$port)
-	log("Sending location of address %s and port %d to locator node", SELF()$address, SELF()$port)
-	event_external_push("POST /node", SELF(), LOCATOR()$address, LOCATOR()$port)
+	LOCATOR(locator_location)
+	send(LOCATOR(), "POST /node") 
 	on("POST /data/*", non_responding(postData))
 	on("GET /data/*", getData)
+	on("POST /send-data/*", non_responding(postSendData))
 	on("PUT /computation/*", non_responding(putComputation))
         on("DELETE /data/*", non_responding(deleteData))
         on("EXIT", non_responding(function(...) q("no")))
 }
 
-locator <- node(locator_init)
-worker <- function(address, port, locator_address, locator_port, verbose=FALSE) {
-	node(worker_init)(address, port,
-			  list(address=locator_address, port=locator_port),
-			  verbose)
-}
+locator_node <- node(locator_init)
+worker_node <- node(worker_init)
 
 loc_cache <- function() {
-	ADDRESS <- character()
-	PORT <- integer()
-	function(address, port) {
-	    if (missing(address) && missing(port)) {
-		data.frame(address=ADDRESS, port=PORT)
-	    } else {
-		ADDRESS <<- address
-		PORT    <<- port
-	    }
-	}
+	LOC <- NULL
+	function(location)
+	    if (missing(location)) LOC else LOC <<- location
 }
-SELF <- loc_cache()
 LOCATOR <- loc_cache()
 
 log <- function(msg, ...) {

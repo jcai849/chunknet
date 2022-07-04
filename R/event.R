@@ -1,12 +1,4 @@
-# Event {
-#       integer fd
-#       list data {
-#                  character header
-#                  (maybe) (any) payload
-#                 }
-# }
-
-Events <- new.env()
+Events <- new.env() # event_name (header) -> handler function
 
 on <- function(event, handler) {
     log("Adding handler for event %s", event)
@@ -15,7 +7,7 @@ on <- function(event, handler) {
 
 handle <- function(event) {
     events <- names(Events)
-    event_name <- event$data$header
+    event_name <- orcv::header(event)
     handler_name <- events[Vectorize(grepl)(glob2rx(events), event_name)]
     handler <- get(handler_name, Events)
     handler(event)
@@ -24,39 +16,8 @@ handle <- function(event) {
 non_responding <- function(handler) {
 	function(event) {
 		handler(event)
-		orcv::event_complete(event)
+		orcv::close(event)
 	}
-}
-
-respond <- function(fd, data) {
-        orcv::respond(fd, data)
-        orcv::event_complete(fd)
-}
-
-next_event <- function() {
-	event <- orcv::event_pop()
-	log("Receiving event %s", event$data$header)
-	event
-}
-
-event_external_push_keep <- function(header, payload, address, port) {
-	log("Pushing event: %s to %s:%d", header, address, port)
-	orcv::event_push(list(header=header, payload=payload), address, port)
-}
-
-event_external_push <-  function(header, payload, address, port) {
-	fd <- event_external_push_keep(header, payload, address, port)
-	orcv::event_complete(fd)
-}
-
-event_internal_push <- function(header, payload) {
-	event_external_push(header, payload, SELF()$address, SELF()$port)
-}
-
-await_final <- function(fd) {
-	event <- orcv::await_response(fd)
-	orcv::event_complete(event)
-	event$data
 }
 
 extract <- function(text, pattern) {
