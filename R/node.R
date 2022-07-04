@@ -13,23 +13,23 @@ node <- function(init_function) {
 
 locator_init <- function(...) {
 	log("Locator initialising...")
-	on("POST /node", non_responding(postNode))
-	on("GET /nodes", getNodes)
-	on("POST /data/*", non_responding(postDataLoc))
-	on("GET /data/*", getDataLocs)
 	on("DELETE /data/*", non_responding(deleteDataLocs))
         on("EXIT", non_responding(function(...) q("no")))
+	on("GET /data/*", getDataLocs) # returns list of locations
+	on("GET /nodes", getNodes)
+	on("POST /data/*", non_responding(postDataLoc))
+	on("POST /node", non_responding(postNode))
 }
 worker_init <- function(locator_location) {
 	log("Worker initialising...")
 	LOCATOR(locator_location)
 	send(LOCATOR(), "POST /node") 
-	on("POST /data/*", non_responding(postData))
-	on("GET /data/*", getData)
-	on("POST /send-data/*", non_responding(postSendData))
-	on("PUT /computation/*", non_responding(putComputation))
         on("DELETE /data/*", non_responding(deleteData))
         on("EXIT", non_responding(function(...) q("no")))
+	on("GET /async/data/*", non_responding(postSendData))
+	on("GET /data/*", getData)
+	on("POST /data/*", non_responding(postData))
+	on("PUT /computation/*", non_responding(putComputation))
 }
 
 locator_node <- node(locator_init)
