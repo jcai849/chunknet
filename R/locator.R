@@ -1,39 +1,38 @@
 deleteDataLocs <- function(event) {
-        data_hrefs <- extract(event$data$header, "DELETE /data/(.*)")
+        data_hrefs <- extract(orcv::header(event), "DELETE /data/(.*)")
         delete_data_locs(data_hrefs)
 }
 
 postNode <- function(event) {
-	payload <- event$data$payload 
-	add_node(payload$address, payload$port)
+	loc <- orcv::location(event)
+	add_node(orcv::address(loc), orcv::port(loc))
 }
 
 getNodes <- function(event) {
-	respond(event, get_all_nodes())
+	orcv::send(event, "NODES", get_all_nodes())
 }
 
 postDataLoc <- function(event) {
-	location <- event$data$payload
-	node_href <- get_node(location$address, location$port)
-	data_href <- extract(event$data$header, "POST /data/(.*)") 
+	location <- orcv::payload(event)
+	node_href <- get_node(orcv::address(location), orcv::port(location))
+	data_href <- extract(orcv::header(event), "POST /data/(.*)") 
 	add_data(data_href, node_href)
 }
 
 getDataLocs <- function(event) {
-	data_hrefs <- extract(event$data$header, "GET /data/(.*)")
+	data_hrefs <- extract(orcv::header(event), "GET /data/(.*)")
 	node_hrefs <- get_data_nodes(data_hrefs)
 	locs <- get_locs(node_hrefs)
-	respond(event, locs)
+	orcv::send(event, "LOCS", locs)
 }
 
 Locator <- new.env()
 with(Locator, {
-	Nodes <- data.frame(node_href=character(), address=character(), port=integer(), loading=integer())
+	Nodes <- data.frame(node_href=character(), address=integer(), port=integer(), loading=integer())
 	Data <- data.frame(node_href=character(), data_href=character())
 })
 
 add_node <- function(address, port) {
-	log("Adding node of address %s and port %d", address, port)
 	Locator$Nodes <- rbind(Locator$Nodes, data.frame(node_href=uuid::UUIDgenerate(), address=address, port=port, loading=0L))
 }
 
@@ -44,7 +43,10 @@ get_locs <- function(node_hrefs) {
 
 get_all_nodes <- function() {
 	log("Returning locations of all known nodes and their loadings")
-	Locator$Nodes[, c("address", "port", "loading")]
+	addresses <- Locator$Nodes$address
+	ports <- Locator$Nodes$port
+	location <- mapply(orcv::as.Location, addresses, ports, SIMPLIFY=FALSE) 
+	list(location=location, loading=Locator$Nodes$loading)
 }
 
 get_node <- function(address, port) {

@@ -1,4 +1,4 @@
 export(push, remote_call, pull,
-       worker, locator, LOCATOR, kill_all_nodes)
+       worker_node, locator_node, LOCATOR, kill_all_nodes)
 S3method(pull, default)
 S3method(pull, ChunkReference)
