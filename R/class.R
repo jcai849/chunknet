@@ -20,7 +20,6 @@ Chunk <- function(id=uuid::UUIDgenerate(), data) {
 }
 
 ChunkStub <- function(id=uuid::UUIDgenerate(), audience=list()) {
-	stopifnot(is.integer(audience))
 	stub <- Href(id)
 	class(stub) <- c("ChunkStub", class(stub))
 	stub$audience <- audience

@@ -2,10 +2,10 @@ library(largerscale)
 
 options(largerscaleVerbose = TRUE)
 
-LOCATOR("localhost", 8999L)
-worker1 <- data.frame(address="localhost", port=9001L)
-worker2 <- data.frame(address="localhost", port=9002L)
-
+LOCATOR(orcv::as.Location("localhost", 8999L))
+worker1 <- orcv::as.Location("localhost", 9001L)
+worker2 <- orcv::as.Location("localhost", 9002L)
+Sys.sleep(2)
 a <- push(1:3)
 print(pull(a))
 b <- push(2:4, "localhost")

@@ -37,21 +37,21 @@ data_avail <- function(computation) {
 
 getData <- function(event) {
 	data_href <- extract(orcv::header(event), "GET /data/(.*)")
-	audience <- orcv::fd(event)
+	audience <- list(orcv::fd(event))
 	data <- register_referenced_data(data_href, audience)
 	respond_audience(data, audience)
 }
 
 asyncGetData <- function(event) {
 	data_href <- extract(orcv::header(event), "GET /async/data/(.*)")
-	audience <- orcv::location(event)
+	audience <- list(orcv::location(event))
 	data <- register_referenced_data(data_href, audience)
 	respond_audience(data, audience)
 }
 
 respond_audience <- function(x, audience, ...) UseMethod("respond_audience", x)
 respond_audience.ChunkStub <- function(x, audience, ...) {
-	x$audience <- c(x$audience, list(audience))
+	x$audience <- c(x$audience, audience)
 }
 respond_audience.Chunk <- function(x, audience, ...) {
 	lapply(audience, orcv::send,
@@ -81,7 +81,7 @@ register_prereq <- function(prereq, comp) {
 	assign(comp$href, comp, associated_comps)
 }
 
-register_referenced_data <- function(href, audience=integer()) {
+register_referenced_data <- function(href, audience=list()) {
 	if (!exists(href, Worker$DataStore)) {
 		async_pull(href)
 		assign(href, ChunkStub(href, audience), Worker$DataStore)
