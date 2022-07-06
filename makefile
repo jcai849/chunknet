@@ -6,4 +6,4 @@ install: /usr/local/lib/R/library/largerscale/
 tags:
 	uctags -R 
 test:
-	cd tests && ./test.sh
+	cd tests && tmux new-session \; source-file test.tmux
