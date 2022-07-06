@@ -1,8 +1,8 @@
 node <- function(init_function) {
-        function(address=NULL, port=0L, init_arg, verbose=FALSE) {
+        function(address=NULL, port=0L, ..., verbose=FALSE) {
 		options("largerscaleVerbose" = verbose)
                 orcv::start(address, port, threads=1L)
-                init_function(init_arg)
+                init_function(...)
                 repeat {
                         event <- orcv::receive(keep_conn=TRUE)
                         handle(event)
@@ -20,9 +20,9 @@ locator_init <- function(...) {
 	on("POST /data/*", non_responding(postDataLoc))
 	on("POST /node", non_responding(postNode))
 }
-worker_init <- function(locator_location) {
+worker_init <- function(locator_address, locator_port) {
 	log("Worker initialising...")
-	LOCATOR(locator_location)
+	LOCATOR(locator_address, locator_port)
 	orcv::send(LOCATOR(), "POST /node") 
         on("DELETE /data/*", non_responding(deleteData))
         on("EXIT", non_responding(function(...) q("no")))
@@ -37,8 +37,8 @@ worker_node <- node(worker_init)
 
 loc_cache <- function() {
 	LOC <- NULL
-	function(location)
-	    if (missing(location)) LOC else LOC <<- location
+	function(host, port)
+	    if (missing(host) || missing(port)) LOC else LOC <<- orcv::as.Location(host, port)
 }
 LOCATOR <- loc_cache()
 

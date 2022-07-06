@@ -2,7 +2,7 @@ library(largerscale)
 
 options(largerscaleVerbose = TRUE)
 
-LOCATOR(orcv::as.Location("localhost", 8999L))
+LOCATOR("localhost", 8999L)
 worker1 <- orcv::as.Location("localhost", 9001L)
 worker2 <- orcv::as.Location("localhost", 9002L)
 Sys.sleep(2)
