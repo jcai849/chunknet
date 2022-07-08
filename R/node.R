@@ -1,3 +1,13 @@
+Events <- new.env() # event_name (header) -> handler function
+
+handle <- function(event) {
+    events <- names(Events)
+    event_name <- orcv::header(event)
+    handler_name <- events[Vectorize(grepl)(glob2rx(events), event_name)]
+    handler <- get(handler_name, Events)
+    handler(event)
+}
+
 node <- function(init_function) {
         function(address=NULL, port=0L, ..., verbose=FALSE) {
 		options("largerscaleVerbose" = verbose)
@@ -11,25 +21,46 @@ node <- function(init_function) {
         }
 }
 
+responding_internally <- function(handler) function(event) {
+	handler(event)
+}
+non_responding_to_fd <- function(handler) function(event) {
+        handler(event)
+        close(event)
+}
+responding_with_work_started <- function(handler) function(event) {
+        orcv::send(orcv::fd(event), "200")
+        handler(event)
+}
+responding_with_result <- function(handler) function(event) {
+        res <- handler(event)
+        orcv::send(orcv::fd(event), "RES", res)
+}
+
+on <- function(event, handler) {
+    log("Adding handler for event %s", event)
+    assign(event, handler, Events)
+}
+
 locator_init <- function(...) {
 	log("Locator initialising...")
-	on("DELETE /data/*", non_responding(deleteDataLocs))
-        on("EXIT", non_responding(function(...) q("no")))
-	on("GET /data/*", getDataLocs)	# returns vector of locations
-	on("GET /nodes", getNodes)	# returns data frame of locations & loadings
-	on("POST /data/*", non_responding(postDataLoc))
-	on("POST /node", non_responding(postNode))
+	on("DELETE /data/*", non_responding_to_fd(deleteDataLocs))
+        on("EXIT", non_responding_to_fd(function(...) q("no")))
+	on("GET /data/*", responding_with_result(getDataLocs))	# returns vector of locations
+	on("GET /nodes", responding_with_result(getNodes))	# returns data frame of locations & loadings
+	on("POST /data/*", responding_with_work_started(postDataLoc))
+	on("POST /node", non_responding_to_fd(postNode))
 }
 worker_init <- function(locator_address, locator_port) {
 	log("Worker initialising...")
 	LOCATOR(locator_address, locator_port)
 	orcv::send(LOCATOR(), "POST /node") 
-        on("DELETE /data/*", non_responding(deleteData))
-        on("EXIT", non_responding(function(...) q("no")))
-	on("GET /async/data/*", non_responding(asyncGetData))
-	on("GET /data/*", getData)
-	on("POST /data/*", non_responding(postData))
-	on("PUT /computation/*", non_responding(putComputation))
+        on("DELETE /data/*", non_responding_to_fd(deleteData))
+        on("EXIT", non_responding_to_fd(function(...) q("no")))
+	on("GET /async/data/*", non_responding_to_fd(asyncGetData))
+	on("GET /data/*", responding_internally(getData))
+	on("POST /data/*", non_responding_to_fd(postData))
+	on("PUT /computation/*", responding_with_work_started(putComputation))
 }
 
 locator_node <- node(locator_init)
@@ -45,4 +76,8 @@ LOCATOR <- loc_cache()
 log <- function(msg, ...) {
 	if (getOption("largerscaleVerbose", default=FALSE))
 		cat(paste0(format(Sys.time(), "%H:%M:%OS9 "), sprintf(msg, ...), "\n"))
+}
+
+extract <- function(text, pattern) {
+        regmatches(text, regexec(pattern, text))[[1]][-1]
 }
