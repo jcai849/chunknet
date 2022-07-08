@@ -27,49 +27,11 @@ register_posted_data <- function(href, data) {
 	}
 }
 
-update_comp_args <- function(computation, chunk) {
-	stopifnot(inherits(computation, "Computation"))
-	stopifnot(inherits(chunk, "Chunk"))
-	computation$arguments[[match(chunk$href, sapply(computation$arguments, "[[", "href"))]] <- chunk
-
-	if (all(data_avail(computation))) run_comp(computation)
-}
-
-data_avail <- function(computation) {
-	stopifnot(inherits(computation, "Computation"))
-	sapply(computation$arguments, inherits, "Chunk")
-}
-
-getData <- function(event) {
-	data_href <- extract(orcv::header(event), "GET /data/(.*)")
-	audience <- list(orcv::fd(event))
-	data <- register_referenced_data(data_href, audience)
-	respond_audience(data, audience)
-}
-
-asyncGetData <- function(event) {
-	data_href <- extract(orcv::header(event), "GET /async/data/(.*)")
-	audience <- list(orcv::location(event))
-	data <- register_referenced_data(data_href, audience)
-	respond_audience(data, audience)
-}
-
-respond_audience <- function(x, audience, ...) UseMethod("respond_audience", x)
-respond_audience.ChunkStub <- function(x, audience, ...) {
-	x$audience <- c(x$audience, audience)
-}
-respond_audience.Chunk <- function(x, audience, ...) {
-	lapply(audience, orcv::send,
-	       paste0("POST /data/", x$href), x$data)
-}
-
-putComputation <- function(event) {
-	computation_href <- extract(orcv::header(event), "PUT /computation/(.*)")
-	compref <- orcv::payload(event)
-	arguments <- lapply(compref$arguments, register_arg, compref)
-	computation <- Computation(compref, arguments)
-	assign(computation$output_href, ChunkStub(computation$output_href), Worker$DataStore)
-	if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
+register_referenced_data <- function(href) {
+	if (!exists(href, Worker$DataStore)) {
+		async_pull(href)
+		assign(href, ChunkStub(href), Worker$DataStore)
+	} else get(href, Worker$DataStore)
 }
 
 register_arg <- function(prereq, comp) {
@@ -86,11 +48,48 @@ register_prereq <- function(prereq, comp) {
 	assign(comp$href, comp, associated_comps)
 }
 
-register_referenced_data <- function(href, audience=list()) {
-	if (!exists(href, Worker$DataStore)) {
-		async_pull(href)
-		assign(href, ChunkStub(href, audience), Worker$DataStore)
-	} else get(href, Worker$DataStore)
+data_avail <- function(computation) {
+	stopifnot(inherits(computation, "Computation"))
+	sapply(computation$arguments, inherits, "Chunk")
+}
+
+postData <- function(event) {
+	href <- extract(orcv::header(event), "POST /data/(.*)")
+	data <- orcv::payload(event)
+
+	register_posted_data(href, data)
+}
+
+get_data <- function(header_extraction, audience_extraction) {
+	function(event) {
+		data_href <- extract(orcv::header(event), header_extraction)
+		audience <- audience_extraction(event)
+		data <- register_referenced_data(data_href)
+		register_audience(data, list(audience))
+	}
+}
+getData <- get_data("GET /data/(.*)", orcv::fd)
+asyncGetData <- get_data("GET /async/data/(.*)", orcv::location)
+
+putComputation <- function(event) {
+	computation_href <- extract(orcv::header(event), "PUT /computation/(.*)")
+	compref <- orcv::payload(event)
+	arguments <- lapply(compref$arguments, register_arg, compref)
+	computation <- Computation(compref, arguments)
+	assign(computation$output_href, ChunkStub(computation$output_href), Worker$DataStore)
+	if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
+}
+
+deleteData <- function(event) {
+       href <- extract(orcv::header(event), "DELETE /data/(.*)")
+       if (length(href)) rm(list=href, pos=Worker$DataStore)
+}
+
+update_comp_args <- function(computation, chunk) {
+	stopifnot(inherits(computation, "Computation"))
+	stopifnot(inherits(chunk, "Chunk"))
+	computation$arguments[[match(chunk$href, sapply(computation$arguments, "[[", "href"))]] <- chunk
+	if (all(data_avail(computation))) run_comp(computation)
 }
 
 run_comp <- function(computation) {
@@ -105,9 +104,4 @@ prereq_cleanup <- function(prereq, associated_computation) {
 	comprefs <- get(prereq$href, Worker$CompStore)
 	rm(list=associated_computation$href, pos=comprefs)
 	if (!length(comprefs)) rm(list=prereq$href, pos=Worker$CompStore)
-}
-
-deleteData <- function(event) {
-       href <- extract(orcv::header(event), "DELETE /data/(.*)")
-       if (length(href)) rm(list=href, pos=Worker$DataStore)
 }

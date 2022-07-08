@@ -1,16 +1,21 @@
 post_location <- function(href, location) {
 	log("Sending location of %s to Locator", href)
-	orcv::send(LOCATOR(), paste0("POST /data/", href), location)
+	stopifnot(length(location) > 0)
+	fd <- orcv::send(LOCATOR(), paste0("POST /data/", href), location, keep_conn=T)
+	invisible(orcv::receive(fd))
 }
 
 get_location <- function(href) {
 	fd <- orcv::send(LOCATOR(), paste0("GET /data/", href), keep_conn=T)
-	orcv::payload(orcv::receive(fd))
+	loc <- orcv::payload(orcv::receive(fd))
+	stopifnot(length(loc) > 0)
+	loc
 }
 
 get_all_locations <- function() {
 	fd <- orcv::send(LOCATOR(), "GET /nodes", keep_conn=T)
 	locnload <- orcv::payload(orcv::receive(fd))
+	stopifnot(NROW(locnload) > 0)
 	locnload$location[order(locnload$loading)]
 }
 
@@ -28,12 +33,13 @@ remote_call <- function(procedure, arguments, target) {
                 if (inherits(arg, "ChunkReference")) arg else push(arg, location))
 
 	compref <- ComputationReference(procedure, arguments)
-	orcv::send(location, paste0("PUT /computation/", compref$href), compref)
+	orcv::receive(orcv::send(location, paste0("PUT /computation/", compref$href), compref, keep_conn=T))
 	post_location(compref$output_href, location)
 	ChunkReference(compref$output_href)
 }
 
-push <- function(value, location) {
+push <- function(x, location, ...) UseMethod("push", x)
+push.default <- function(x, location, ...) {
 	chunkref <- ChunkReference()
 	if (missing(location)) {
 		log("push missing location. Accessing all locations")
@@ -45,8 +51,18 @@ push <- function(value, location) {
                 location <- all_locs[orcv::address(all_locs) == address][1]
         }
 	post_location(chunkref$href, location)
-	orcv::send(location, paste0("POST /data/", chunkref$href), value)
+	post_data(chunkref$href, x, location)
 	chunkref
+}
+push.Chunk <- function(x, location, ...) {
+	post_data(x$href, x$data, location)
+	x
+}
+
+post_data <- function(href, value, location) {
+	stopifnot(orcv::is.Location(location) || orcv::is.FD(location))
+	orcv::send(location, paste0("POST /data/", href), value)
+	value
 }
 
 pull <- function(x, ...) UseMethod("pull", x)
