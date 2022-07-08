@@ -9,9 +9,9 @@ deleteDataLocs <- function(event) {
         Locator$Data <- Locator$Data[!Locator$Data$data_href %in% data_href,]
 }
 
-postNode <- function(event) {
-	loc <- orcv::location(event)
-	Locator$Nodes <- rbind(Locator$Nodes, data.frame(location=loc, loading=0L))
+getDataLocs <- function(event) {
+	data_href <- extract(orcv::header(event), "GET /data/(.*)")
+	Locator$Data$location[Locator$Data$data_href %in% data_href] 
 }
 
 getNodes <- function(event) {
@@ -26,7 +26,7 @@ postDataLoc <- function(event) {
 	Locator$Nodes[relevant_nodes,]$loading <- Locator$Nodes[relevant_nodes,]$loading + 1
 }
 
-getDataLocs <- function(event) {
-	data_href <- extract(orcv::header(event), "GET /data/(.*)")
-	Locator$Data$location[Locator$Data$data_href %in% data_href] 
+postNode <- function(event) {
+	loc <- orcv::location(event)
+	Locator$Nodes <- rbind(Locator$Nodes, data.frame(location=loc, loading=0L))
 }
