@@ -11,7 +11,7 @@ register_audience <- function(x, audience) {
 register_audience.Chunk <- function(x, audience) {
 	lapply(audience, function(loc) if (!(orcv::is.Location(loc) && loc == orcv::location())) push(x, loc))
 }
-register_audience.ChunkStub <- function(x, audience) x$audience <- c(x, audience)
+register_audience.ChunkStub <- function(x, audience) x$audience <- c(x$audience, audience)
 
 register_posted_data <- function(href, data) {
 	log("Registering data with href %s", href)
