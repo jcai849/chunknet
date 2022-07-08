@@ -4,16 +4,21 @@ with(Worker, {
 	CompStore <- new.env(emptyenv()) # (prereq|comp)_href -> env of computations
 })
 
-postData <- function(event) {
-	href <- extract(orcv::header(event), "POST /data/(.*)")
-	register_posted_data(href, orcv::payload(event))
+register_audience <- function(x, audience) {
+	stopifnot(is.list(audience))
+	UseMethod("register_audience", x)
 }
+register_audience.Chunk <- function(x, audience) {
+	lapply(audience, function(loc) if (!(orcv::is.Location(loc) && loc == orcv::location())) push(x, loc))
+}
+register_audience.ChunkStub <- function(x, audience) x$audience <- c(x, audience)
 
 register_posted_data <- function(href, data) {
+	log("Registering data with href %s", href)
 	chunk <- Chunk(href, data)
 	if (exists(href, Worker$DataStore)) {
 		stub <- get(href, Worker$DataStore)
-		respond_audience(chunk, stub$audience)
+		register_audience(chunk, stub$audience)
 	}
 	assign(href, chunk, Worker$DataStore)
 	if (exists(href, Worker$CompStore)) {

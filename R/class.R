@@ -19,11 +19,15 @@ Chunk <- function(id=uuid::UUIDgenerate(), data) {
 	chunk
 }
 
-ChunkStub <- function(id=uuid::UUIDgenerate(), audience=list()) {
+ChunkStub <- function(id=uuid::UUIDgenerate()) {
 	stub <- Href(id)
 	class(stub) <- c("ChunkStub", class(stub))
-	stub$audience <- audience
+	stub$audience <- list()
 	stub
+}
+
+add_audience <- function(stub, member) {
+	stub$audience <- c(stub$audience, list(member))
 }
 
 ComputationReference <- function(procedure, arguments) {
