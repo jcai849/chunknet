@@ -33,8 +33,8 @@ remote_call <- function(procedure, arguments, target) {
                 if (inherits(arg, "ChunkReference")) arg else push(arg, location))
 
 	compref <- ComputationReference(procedure, arguments)
-	orcv::receive(orcv::send(location, paste0("PUT /computation/", compref$href), compref, keep_conn=T))
 	post_location(compref$output_href, location)
+	orcv::send(location, paste0("PUT /computation/", compref$href), compref)
 	ChunkReference(compref$output_href)
 }
 

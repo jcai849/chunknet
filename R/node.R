@@ -60,7 +60,7 @@ worker_init <- function(locator_address, locator_port) {
 	on("GET /async/data/*", non_responding_to_fd(asyncGetData))
 	on("GET /data/*", responding_internally(getData))
 	on("POST /data/*", non_responding_to_fd(postData))
-	on("PUT /computation/*", responding_with_work_started(putComputation))
+	on("PUT /computation/*", non_responding_to_fd(putComputation))
 }
 
 locator_node <- node(locator_init)
