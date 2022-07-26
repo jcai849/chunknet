@@ -78,6 +78,7 @@ log <- function(msg, ...) {
 		cat(paste0(format(Sys.time(), "%H:%M:%OS9 "), sprintf(msg, ...), "\n"))
 }
 
-extract <- function(text, pattern) {
-        regmatches(text, regexec(pattern, text))[[1]][-1]
+# extract the group given in the pattern from the text, splitting output
+extract <- function(text, pattern, split=',') {
+        strsplit(regmatches(text, regexec(pattern, text))[[1]][-1], split)
 }
