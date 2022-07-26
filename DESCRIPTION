@@ -1,4 +1,4 @@
-Package: largerscale
+Package: chunknet
 Type: Package
 Title: Create a fast, scalable network of peer-to-peer R processes to distribute computation with larger than memory data.
 Version: 0.1.0

@@ -1,6 +1,6 @@
-library(largerscale)
+library(chunknet)
 
-options(largerscaleVerbose = TRUE)
+options(chunknetVerbose = TRUE)
 
 LOCATOR("localhost", 8999L)
 worker1 <- orcv::as.Location("localhost", 9001L)

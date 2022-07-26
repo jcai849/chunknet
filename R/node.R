@@ -10,7 +10,7 @@ handle <- function(event) {
 
 node <- function(init_function) {
         function(address=NULL, port=0L, ..., verbose=FALSE) {
-		options("largerscaleVerbose" = verbose)
+		options("chunknetVerbose" = verbose)
                 orcv::start(address, port, threads=1L)
                 init_function(...)
                 repeat {
@@ -74,7 +74,7 @@ loc_cache <- function() {
 LOCATOR <- loc_cache()
 
 log <- function(msg, ...) {
-	if (getOption("largerscaleVerbose", default=FALSE))
+	if (getOption("chunknetVerbose", default=FALSE))
 		cat(paste0(format(Sys.time(), "%H:%M:%OS9 "), sprintf(msg, ...), "\n"))
 }
 

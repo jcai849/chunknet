@@ -1,7 +1,7 @@
 .PHONY: tags install test
 all: install test
-install: /usr/local/lib/R/library/largerscale/
-/usr/local/lib/R/library/largerscale/: R/* NAMESPACE DESCRIPTION
+install: /usr/local/lib/R/library/chunknet/
+/usr/local/lib/R/library/chunknet/: R/* NAMESPACE DESCRIPTION
 	R CMD INSTALL .
 tags:
 	uctags -R 
