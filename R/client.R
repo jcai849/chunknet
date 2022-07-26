@@ -1,75 +1,94 @@
-post_location <- function(href, location) {
+post_locations <- function(hrefs, locations) {
 	log("Sending location of %s to Locator", href)
-	stopifnot(length(location) > 0)
-	fd <- orcv::send(LOCATOR(), paste0("POST /data/", href), location, keep_conn=T)
+	stopifnot(is.character(hrefs), is.Location(locations))
+	stopifnot(length(location) > 0,
+		  length(hrefs) == length(locations))
+	fd <- orcv::send(LOCATOR(), paste0("POST /data/", paste(hrefs, collapse=',')), locations, keep_conn=T)
 	invisible(orcv::receive(fd))
 }
 
-get_location <- function(href) {
-	fd <- orcv::send(LOCATOR(), paste0("GET /data/", href), keep_conn=T)
-	loc <- orcv::payload(orcv::receive(fd))
-	stopifnot(length(loc) > 0)
-	loc
+get_locations <- function(hrefs) {
+	stopifnot(is.character(hrefs))
+	fd <- orcv::send(LOCATOR(), paste0("GET /data/", paste(hrefs, collapse=','), keep_conn=T)
+	locs <- orcv::payload(orcv::receive(fd))
+	stopifnot(is.Location(locs),
+		  length(locs) == length(hrefs))
+	invisible(locs)
 }
 
-get_all_locations <- function() {
-	fd <- orcv::send(LOCATOR(), "GET /nodes", keep_conn=T)
-	locnload <- orcv::payload(orcv::receive(fd))
-	stopifnot(NROW(locnload) > 0)
-	locnload$location[order(locnload$loading)]
+get_host_locations(hosts) {
+	fd <- orcv::send(LOCATOR(), paste0("GET /host/", paste(hosts, collapse=','), keep_conn=T)
+	locs <- orcv::payload(orcv::receive(fd))
+	stopifnot(is.Location(locs),
+		  length(locs) == length(hosts))
+	invisible(locs)
 }
 
-remote_call <- function(procedure, arguments, target) {
+get_least_loaded_location <- function() {
+	fd <- orcv::send(LOCATOR(), "GET /node", keep_conn=T)
+	orcv::payload(orcv::receive(fd))
+}
+
+remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
 	chunkref_args <- sapply(arguments, inherits, "ChunkReference")
+
         location <- if (!missing(target)) {
 		stopifnot(inherits(target, "ChunkReference"))
-		get_location(target$href)[1]
+		get_locations(target$href)[1]
 	} else if (!any(chunkref_args)) {
-                get_all_locations()[1]
-        } else {
-                get_location(arguments[chunkref_args][[1]]$href)[1]
+                get_least_loaded_location()
+        } else if (any(!is.null(clocs <- sapply(arguments[chunkref_args], '$', "loc")))) {
+		clocs
+	} else {
+                get_locations(arguments[chunkref_args][[1]]$href)[1]
         }
-	arguments <- lapply(arguments, function(arg)
-                if (inherits(arg, "ChunkReference")) arg else push(arg, location))
 
+	new_chunkrefs <- push(arguments[!chunkref_args], rep(location, sum(!chunkref_args)), post_locs=FALSE)
+	post_locations(sapply(new_chunkrefs, '$', href), rep(location, length(new_chunkrefs)))
+
+	arguments[!chunkref_args] <- new_chunkrefs
+	
 	compref <- ComputationReference(procedure, arguments)
-	post_location(compref$output_href, location)
+	if (post_locs) post_locations(compref$output_href, location)
 	orcv::send(location, paste0("PUT /computation/", compref$href), compref)
-	ChunkReference(compref$output_href)
+	ChunkReference(compref$output_href, location)
 }
 
-push <- function(x, location, ...) UseMethod("push", x)
-push.default <- function(x, location, ...) {
-	chunkref <- ChunkReference()
-	if (missing(location)) {
-		log("push missing location. Accessing all locations")
-                location <- get_all_locations()[1]
+push <- function(x, locations, ...) UseMethod("push", x)
+push.default <- function(x, locations, post_locs=TRUE, ...) {
+	location <- if (missing(location)) {
+                get_least_loaded_location()
         } else if (is.character(location)) {
-		log("push given only hostname. Accessing all locations for address")
 		address <- orcv::address(orcv::as.Location(location, 0L))
-                all_locs <- get_all_locations()
-                location <- all_locs[orcv::address(all_locs) == address][1]
-        }
-	post_location(chunkref$href, location)
-	post_data(chunkref$href, x, location)
-	chunkref
+		get_host_locations(address)
+        } else location
+	chunkrefs <- lapply(x, function(...) ChunkReference(init_loc=location))
+
+	if (post_locs) post_locations(sapply(chunkrefs '$' "href"), rep(location, length(chunkrefs)))
+
+	post_data(sapply(chunkrefs, '$', "href"), x, location)
+	chunkrefs
 }
 push.Chunk <- function(x, location, ...) {
 	post_data(x$href, x$data, location)
 	x
 }
 
-post_data <- function(href, value, location) {
+post_data <- function(hrefs, values, location) {
 	stopifnot(orcv::is.Location(location) || orcv::is.FD(location))
-	orcv::send(location, paste0("POST /data/", href), value)
-	value
+	stopifnot(is.character(href),
+		  length(hrefs) == length(values))
+	orcv::send(location, paste0("POST /data/", paste(hrefs, collapse=',')), values)
+	values
 }
 
 pull <- function(x, ...) UseMethod("pull", x)
 pull.character <- function(x, ...) {
-	location <- get_location(x)[1]
-	fd <- orcv::send(location, paste0("GET /data/", x), keep_conn=T)
-	orcv::payload(orcv::receive(fd))
+	locations <- get_locations(x)
+	hrefs_at_locs <- split(x, locations)
+	fds <- mapply(function(loc, hrefs) orcv::send(loc, paste0("GET /data/", paste(hrefs, collapse=',')), keep_conn=T),
+		      unique(locations), hrefs_at_locs)
+	orcv::payload(orcv::receive(fds))
 }
 pull.ChunkReference <- function(x, ...) {
 	pull(x$href)
@@ -77,13 +96,12 @@ pull.ChunkReference <- function(x, ...) {
 
 async_pull <- function(x, ...) UseMethod("async_pull", x)
 async_pull.character <- function(x, ...) {
-	location <- get_location(x)[1]
-	orcv::send(location, paste0("GET /async/data/", x))
+	location <- get_locations(x)
+	hrefs_at_locs <- split(x, locations)
+	mapply(function(loc, hrefs) orcv::send(location, paste0("GET /async/data/", paste(hrefs, collapse=',')))
+	       unique(locations), hrefs_at_locs)
 }
 
 kill_all_nodes <- function() {
-        all_locations <- get_all_locations()
-	orcv::send(all_locations, "EXIT")
 	orcv::send(LOCATOR(), "EXIT")
-        invisible(NULL)
 }

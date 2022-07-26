@@ -5,10 +5,11 @@ Href <- function(id=uuid::UUIDgenerate()) {
        href
 }
 
-ChunkReference <- function(id=uuid::UUIDgenerate()) {
+ChunkReference <- function(id=uuid::UUIDgenerate(), init_loc) {
 	chunkref <- Href(id)
+	chunkref$init_loc <- init_loc
 	class(chunkref) <- c("ChunkReference", class(chunkref))
-	reg.finalizer(chunkref, delete)
+	reg.finalizer(chunkref, delete_chunk)
 	chunkref
 }
 
@@ -52,11 +53,12 @@ Computation <- function(ComputationReference, arguments) {
 	comp
 }
 
-delete <- function(x) {
-	stopifnot(inherits(x, "ChunkReference"))
-        locations <- get_location(x$href)
-	log("Deleting data from location")
-	lapply(locations, orcv::send, paste0("DELETE /data/", x$href))
+delete_chunk <- function(x) delete_href(x$href)
+
+delete_href <- function(hrefs, ...) {
+	stopifnot(is.character(hrefs))
+        locations <- get_locations(hrefs)
+	lapply(locations, orcv::send, paste0("DELETE /data/", paste(hrefs, collapse=',')))
 	log("Deleting data location from locator")
-        orcv::send(LOCATOR(), paste0("DELETE /data/", x$href))
+        orcv::send(LOCATOR(), paste0("DELETE /data/", paste(hrefs, collapse=',')))
 }
