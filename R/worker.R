@@ -54,17 +54,17 @@ data_avail <- function(computation) {
 }
 
 postData <- function(event) {
-	href <- extract(orcv::header(event), "POST /data/(.*)")
+	hrefs <- extract(orcv::header(event), "POST /data/(.*)")
 	data <- orcv::payload(event)
 
-	register_posted_data(href, data)
+	lapply(hrefs, register_posted_data, data)
 }
 
 get_data <- function(header_extraction, audience_extraction) {
 	function(event) {
-		data_href <- extract(orcv::header(event), header_extraction)
+		data_hrefs <- extract(orcv::header(event), header_extraction)
 		audience <- audience_extraction(event)
-		data <- register_referenced_data(data_href)
+		data <- lapply(data_hrefs, register_referenced_data)
 		register_audience(data, list(audience))
 	}
 }
@@ -81,8 +81,8 @@ putComputation <- function(event) {
 }
 
 deleteData <- function(event) {
-       href <- extract(orcv::header(event), "DELETE /data/(.*)")
-       if (length(href)) rm(list=href, pos=Worker$DataStore)
+       hrefs <- extract(orcv::header(event), "DELETE /data/(.*)")
+       if (length(hrefs)) rm(list=hrefs, pos=Worker$DataStore)
 }
 
 update_comp_args <- function(computation, chunk) {

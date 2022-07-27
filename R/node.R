@@ -47,8 +47,8 @@ locator_init <- function(...) {
 	on("DELETE /data/*", non_responding_to_fd(deleteDataLocs))
         on("EXIT", non_responding_to_fd(function(...) q("no")))
 	on("GET /data/*", responding_with_result(getDataLocs))	# returns vector of locations
-	on("GET /nodes", responding_with_result(getNodes))	# returns data frame of locations & loadings
-	on("POST /data/*", responding_with_work_started(postDataLoc))
+	on("GET /node", responding_with_result(getNode))
+	on("POST /data/*", responding_with_work_started(postDataLocs))
 	on("POST /node", non_responding_to_fd(postNode))
 }
 worker_init <- function(locator_address, locator_port) {
