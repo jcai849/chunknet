@@ -18,7 +18,7 @@ getNode <- function(event) { # returns least loaded node
 	Locator$Nodes$location[which.min(Locator$Nodes$loading)]
 }
 
-postDataLoc <- function(event) {
+postDataLocs <- function(event) {
 	locations <- orcv::payload(event)
 	data_hrefs <- extract(orcv::header(event), "POST /data/(.*)") 
 	Locator$Data <- rbind(Locator$Data, data.frame(location=locations, data_href=data_hrefs))

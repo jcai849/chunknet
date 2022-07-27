@@ -61,7 +61,7 @@ push.default <- function(x, locations, post_locs=TRUE, ...) {
         } else if (is.character(location)) {
 		address <- orcv::address(orcv::as.Location(location, 0L))
 		get_host_locations(address)
-        } else location
+        } else locations
 	chunkrefs <- lapply(x, function(...) ChunkReference(init_loc=location))
 
 	if (post_locs) post_locations(sapply(chunkrefs '$' "href"), rep(location, length(chunkrefs)))
@@ -94,10 +94,10 @@ pull.ChunkReference <- function(x, ...) {
 	pull(x$href)
 }
 
-async_pull <- function(x, ...) UseMethod("async_pull", x)
-async_pull.character <- function(x, ...) {
-	location <- get_locations(x)
-	hrefs_at_locs <- split(x, locations)
+async_pull <- function(hrefs, ...) {
+	stopifnot(is.character(hrefs))
+	location <- get_locations(hrefs)
+	hrefs_at_locs <- split(hrefs, locations)
 	mapply(function(loc, hrefs) orcv::send(location, paste0("GET /async/data/", paste(hrefs, collapse=',')))
 	       unique(locations), hrefs_at_locs)
 }
