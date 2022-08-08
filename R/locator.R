@@ -14,8 +14,10 @@ getDataLocs <- function(event) {
 	Locator$Data$location[Locator$Data$data_href %in% data_href] 
 }
 
-getNode <- function(event) { # returns least loaded node
-	Locator$Nodes$location[which.min(Locator$Nodes$loading)]
+getNode <- function(event) { # returns least loaded node, assumes loading will take place
+	least_loaded_i <- which.min(Locator$Nodes$loading)
+	Locator$Nodes$loading[least_loaded_i] <- Locator$Nodes$loading[least_loaded_i] + 1
+	Locator$Nodes$location[least_loaded_i]
 }
 
 postDataLocs <- function(event) {
