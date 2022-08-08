@@ -10,7 +10,7 @@ post_locations <- function(hrefs, locations) {
 get_locations <- function(hrefs) {
 	stopifnot(is.character(hrefs))
 	fd <- orcv::send(LOCATOR(), paste0("GET /data/", paste(hrefs, collapse=','), keep_conn=T)
-	locs <- orcv::payload(orcv::receive(fd))
+	locs <- orcv::payload(orcv::receive(fd)[[1]])
 	stopifnot(is.Location(locs),
 		  length(locs) == length(hrefs))
 	invisible(locs)
@@ -18,7 +18,7 @@ get_locations <- function(hrefs) {
 
 get_host_locations(hosts) {
 	fd <- orcv::send(LOCATOR(), paste0("GET /host/", paste(hosts, collapse=','), keep_conn=T)
-	locs <- orcv::payload(orcv::receive(fd))
+	locs <- orcv::payload(orcv::receive(fd)[[1]])
 	stopifnot(is.Location(locs),
 		  length(locs) == length(hosts))
 	invisible(locs)
@@ -26,7 +26,7 @@ get_host_locations(hosts) {
 
 get_least_loaded_location <- function() {
 	fd <- orcv::send(LOCATOR(), "GET /node", keep_conn=T)
-	orcv::payload(orcv::receive(fd))
+	orcv::payload(orcv::receive(fd)[[1]])
 }
 
 remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
@@ -83,12 +83,12 @@ post_data <- function(hrefs, values, location) {
 }
 
 pull <- function(x, ...) UseMethod("pull", x)
-pull.character <- function(x, ...) {
+pull.character <- function(x, ...) { # hrefs
 	locations <- get_locations(x)
 	hrefs_at_locs <- split(x, locations)
 	fds <- mapply(function(loc, hrefs) orcv::send(loc, paste0("GET /data/", paste(hrefs, collapse=',')), keep_conn=T),
 		      unique(locations), hrefs_at_locs)
-	orcv::payload(orcv::receive(fds))
+	lapply(orcv::receive(fds), orcv::payload)
 }
 pull.ChunkReference <- function(x, ...) {
 	pull(x$href)
