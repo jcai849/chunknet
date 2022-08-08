@@ -2,6 +2,5 @@ export(push, remote_call, pull, async_pull,
        worker_node, locator_node, LOCATOR, kill_all_nodes)
 S3method(pull, character)
 S3method(pull, ChunkReference)
-S3method(async_pull, character)
 S3method(push, default)
 S3method(push, Chunk)
