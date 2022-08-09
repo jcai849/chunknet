@@ -1,7 +1,6 @@
 post_locations <- function(hrefs, locations) {
-	log("Sending location of %s to Locator", href)
-	stopifnot(is.character(hrefs), is.Location(locations))
-	stopifnot(length(location) > 0,
+	stopifnot(is.character(hrefs), orcv::is.Location(locations))
+	stopifnot(length(locations) > 0,
 		  length(hrefs) == length(locations))
 	fd <- orcv::send(LOCATOR(), paste0("POST /data/", paste(hrefs, collapse=',')), locations, keep_conn=T)
 	invisible(orcv::receive(fd))
@@ -24,8 +23,9 @@ get_host_locations <- function(hosts) {
 	invisible(locs)
 }
 
-get_least_loaded_location <- function() {
-	fd <- orcv::send(LOCATOR(), "GET /node", keep_conn=T)
+get_least_loaded_location <- function(addresses) {
+	request <- paste0("GET /node/", if (missing(addresses)) NULL else paste(addresses, collapse=','))
+	fd <- orcv::send(LOCATOR(), request, keep_conn=T)
 	orcv::payload(orcv::receive(fd)[[1]])
 }
 
@@ -54,19 +54,19 @@ remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
 	ChunkReference(compref$output_href, location)
 }
 
-push <- function(x, locations, ...) UseMethod("push", x)
-push.default <- function(x, locations, post_locs=TRUE, ...) {
+push <- function(x, location, ...) UseMethod("push", x)
+push.default <- function(x, location, post_locs=TRUE, ...) {
 	location <- if (missing(location)) {
                 get_least_loaded_location()
         } else if (is.character(location)) {
 		address <- orcv::address(orcv::as.Location(location, 0L))
-		get_host_locations(address)
-        } else locations
-	chunkrefs <- lapply(x, function(...) ChunkReference(init_loc=location))
+		get_least_loaded_location(address)
+        } else location
+	chunkrefs <- lapply(location, function(...) ChunkReference(init_loc=location))
 
-	if (post_locs) post_locations(sapply(chunkrefs, '$', "href"), rep(location, length(chunkrefs)))
+	if (post_locs) post_locations(sapply(chunkrefs, function(x) get("href", x)), rep(location, length(chunkrefs)))
 
-	post_data(sapply(chunkrefs, '$', "href"), x, location)
+	post_data(sapply(chunkrefs, function(x) get("href", x)), x, location)
 	chunkrefs
 }
 push.Chunk <- function(x, location, ...) {
@@ -76,7 +76,7 @@ push.Chunk <- function(x, location, ...) {
 
 post_data <- function(hrefs, values, location) {
 	stopifnot(orcv::is.Location(location) || orcv::is.FD(location))
-	stopifnot(is.character(href),
+	stopifnot(is.character(hrefs),
 		  length(hrefs) == length(values))
 	orcv::send(location, paste0("POST /data/", paste(hrefs, collapse=',')), values)
 	values

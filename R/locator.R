@@ -15,16 +15,20 @@ getDataLocs <- function(event) {
 }
 
 getNode <- function(event) { # returns least loaded node, assumes loading will take place
-	least_loaded_i <- which.min(Locator$Nodes$loading)
-	Locator$Nodes$loading[least_loaded_i] <- Locator$Nodes$loading[least_loaded_i] + 1
-	Locator$Nodes$location[least_loaded_i]
+	addresses <- extract(orcv::header(event), "GET /node/(.*)")
+	i <- if (!length(addresses)) TRUE else sapply(Locator$Nodes$location, orcv::address) %in% as.integer(addresses)
+	least_loaded_i <- which.min(Locator$Nodes[i,]$loading)
+	Locator$Nodes[i,]$loading[least_loaded_i] <- Locator$Nodes[i,]$loading[least_loaded_i] + 1
+	Locator$Nodes[i,]$location[least_loaded_i]
 }
+
+getAllNodes <- function(event) Locator$Nodes$location
 
 postDataLocs <- function(event) {
 	locations <- orcv::payload(event)
 	data_hrefs <- extract(orcv::header(event), "POST /data/(.*)") 
 	Locator$Data <- rbind(Locator$Data, data.frame(location=locations, data_href=data_hrefs))
-	relevant_nodes <- Locator$Nodes$location == loc
+	relevant_nodes <- Locator$Nodes$location == locations
 	Locator$Nodes[relevant_nodes,]$loading <- Locator$Nodes[relevant_nodes,]$loading + 1
 }
 

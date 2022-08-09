@@ -47,7 +47,7 @@ locator_init <- function(...) {
 	on("DELETE /data/*", non_responding_to_fd(deleteDataLocs))
         on("EXIT", non_responding_to_fd(function(...) q("no")))
 	on("GET /data/*", responding_with_result(getDataLocs))	# returns vector of locations
-	on("GET /node", responding_with_result(getNode))
+	on("GET /node/*", responding_with_result(getNode))
 	on("POST /data/*", responding_with_work_started(postDataLocs))
 	on("POST /node", non_responding_to_fd(postNode))
 }
@@ -80,5 +80,5 @@ log <- function(msg, ...) {
 
 # extract the group given in the pattern from the text, splitting output
 extract <- function(text, pattern, split=',') {
-        strsplit(regmatches(text, regexec(pattern, text))[[1]][-1], split)
+        unlist(strsplit(regmatches(text, regexec(pattern, text))[[1]][-1], split))
 }
