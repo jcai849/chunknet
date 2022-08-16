@@ -48,6 +48,7 @@ locator_init <- function(...) {
         on("EXIT", non_responding_to_fd(function(...) q("no")))
 	on("GET /data/*", responding_with_result(getDataLocs))	# returns vector of locations
 	on("GET /node/*", responding_with_result(getNode))
+	on("GET /host/*", responding_with_result(getHost))
 	on("POST /data/*", responding_with_work_started(postDataLocs))
 	on("POST /node", non_responding_to_fd(postNode))
 }

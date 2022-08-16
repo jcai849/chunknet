@@ -6,28 +6,17 @@ post_locations <- function(hrefs, locations) {
 	invisible(orcv::receive(fd))
 }
 
-get_locations <- function(hrefs) {
-	stopifnot(is.character(hrefs))
-	fd <- orcv::send(LOCATOR(), paste0("GET /data/", paste(hrefs, collapse=','), keep_conn=T))
-	locs <- orcv::payload(orcv::receive(fd)[[1]])
-	stopifnot(is.Location(locs),
-		  length(locs) == length(hrefs))
-	invisible(locs)
-}
-
-get_host_locations <- function(hosts) {
-	fd <- orcv::send(LOCATOR(), paste0("GET /host/", paste(hosts, collapse=','), keep_conn=T))
-	locs <- orcv::payload(orcv::receive(fd)[[1]])
-	stopifnot(is.Location(locs),
-		  length(locs) == length(hosts))
-	invisible(locs)
-}
-
-get_least_loaded_location <- function(addresses) {
-	request <- paste0("GET /node/", if (missing(addresses)) NULL else paste(addresses, collapse=','))
+get_locs <- function(method_arg) function(ids) {
+	request <- paste0("GET ", method_arg, if (missing(ids)) NULL else paste(ids, collapse=','))
 	fd <- orcv::send(LOCATOR(), request, keep_conn=T)
-	orcv::payload(orcv::receive(fd)[[1]])
+	locs <- orcv::payload(orcv::receive(fd)[[1]])
+	stopifnot(is.Location(locs),
+		  length(locs) == length(ids))
+	invisible(locs)
 }
+get_locations <- get_locs("/data/") # takes char vector of hrefs
+get_host_locations <- get_locs("/host/") #takes char vector of hosts
+get_least_loaded_locationss <- get_locs("/node/") # takes integer n locations
 
 remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
 	chunkref_args <- sapply(arguments, inherits, "ChunkReference")
@@ -36,8 +25,8 @@ remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
 		stopifnot(inherits(target, "ChunkReference"))
 		get_locations(target$href)[1]
 	} else if (!any(chunkref_args)) {
-                get_least_loaded_location()
-        } else if (any(!is.null(clocs <- sapply(arguments[chunkref_args], '$', "loc")))) {
+                get_least_loaded_locations(1)
+        } else if (any(!is.null(clocs <- sapply(arguments[chunkref_args], function(x) get("init_loc", x))))) {
 		clocs
 	} else {
                 get_locations(arguments[chunkref_args][[1]]$href)[1]
@@ -54,32 +43,34 @@ remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
 	ChunkReference(compref$output_href, location)
 }
 
-push <- function(x, location, ...) UseMethod("push", x)
-push.default <- function(x, location, post_locs=TRUE, ...) {
-	location <- if (missing(location)) {
-                get_least_loaded_location()
-        } else if (is.character(location)) {
-		address <- orcv::address(orcv::as.Location(location, 0L))
-		get_least_loaded_location(address)
-        } else location
-	chunkrefs <- lapply(location, function(...) ChunkReference(init_loc=location))
+push <- function(x, locations, ...) UseMethod("push", x)
+push.default <- function(x, locations, post_locs=TRUE, ...) { # returns list of chunks
+	locations <- if (missing(locations)) { 
+                get_least_loaded_locations(1)
+        } else if (is.character(locations)) {
+		get_host_locations(locations)
+        } else locations
 
-	if (post_locs) post_locations(sapply(chunkrefs, function(x) get("href", x)), rep(location, length(chunkrefs)))
+	chunkrefs <- lapply(locations, function(loc) ChunkReference(init_loc=loc))
+	if (post_locs) post_locations(sapply(chunkrefs, function(x) get("href", x)), locations)
 
-	post_data(sapply(chunkrefs, function(x) get("href", x)), x, location)
+	post_data(sapply(chunkrefs, function(x) get("href", x)), x, locations)
 	chunkrefs
 }
-push.Chunk <- function(x, location, ...) {
-	post_data(x$href, x$data, location)
-	x
-}
+#push.Chunk <- function(x, location, ...) {
+#	post_data(x$href, x$data, location)
+#	x
+#}
 
-post_data <- function(hrefs, values, location) {
-	stopifnot(orcv::is.Location(location) || orcv::is.FD(location))
+post_data <- function(hrefs, values, locations) {
+	stopifnot(orcv::is.Location(locations) || orcv::is.FD(locations))
 	stopifnot(is.character(hrefs),
-		  length(hrefs) == length(values))
-	orcv::send(location, paste0("POST /data/", paste(hrefs, collapse=',')), values)
-	values
+		  length(hrefs) == length(locations))
+	locs <- lapply(split(locations, locations), '[[', 1)	# get unique locations
+	vals <- split(values, locations)			# group vals by location
+	hrs <- split(hrefs, locations)				# group hrefs by location
+	mapply(function(l, h, v) orcv::send(l, paste0("POST /data/", paste(h, collapse=',')), v)
+	invisible(NULL)
 }
 
 pull <- function(x, ...) UseMethod("pull", x)
