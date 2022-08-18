@@ -56,8 +56,8 @@ data_avail <- function(computation) {
 postData <- function(event) {
 	hrefs <- extract(orcv::header(event), "POST /data/(.*)")
 	data <- orcv::payload(event)
-
-	lapply(hrefs, register_posted_data, data)
+	stopifnot(length(hrefs) == length(data))
+	mapply(register_posted_data, hrefs, data)
 }
 
 get_data <- function(header_extraction, audience_extraction) {

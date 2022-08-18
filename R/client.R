@@ -66,17 +66,18 @@ post_data <- function(hrefs, values, locations) {
 	stopifnot(orcv::is.Location(locations) || orcv::is.FD(locations))
 	stopifnot(is.character(hrefs),
 		  length(hrefs) == length(locations))
-	locs <- lapply(split(locations, locations), '[[', 1)	# get unique locations
-	vals <- split(values, locations)			# group vals by location
-	hrs <- split(hrefs, locations)				# group hrefs by location
-	mapply(function(l, h, v) orcv::send(l, paste0("POST /data/", paste(h, collapse=',')), v)
+	locs <- lapply(split(locations, as.factor(locations)), '[[', 1)	# get unique locations
+	hrs <- split(hrefs, as.factor(locations))				# group hrefs by location
+	vals <- split(values, as.factor(locations))			# group vals by location
+	mapply(function(l, h, v) orcv::send(l, paste0("POST /data/", paste(h, collapse=',')), v),
+		locs, hrs, vals)
 	invisible(NULL)
 }
 
 pull <- function(x, ...) UseMethod("pull", x)
 pull.character <- function(x, ...) { # hrefs
 	locations <- get_locations(x)
-	hrefs_at_locs <- split(x, locations)
+	hrefs_at_locs <- split(x, as.factor(locations))
 	fds <- mapply(function(loc, hrefs) orcv::send(loc, paste0("GET /data/", paste(hrefs, collapse=',')), keep_conn=T),
 		      unique(locations), hrefs_at_locs)
 	lapply(orcv::receive(fds), orcv::payload)
@@ -88,7 +89,7 @@ pull.ChunkReference <- function(x, ...) {
 async_pull <- function(hrefs, ...) {
 	stopifnot(is.character(hrefs))
 	location <- get_locations(hrefs)
-	hrefs_at_locs <- split(hrefs, locations)
+	hrefs_at_locs <- split(hrefs, as.factor(locations))
 	mapply(function(loc, hrefs) orcv::send(location, paste0("GET /async/data/", paste(hrefs, collapse=','))),
 	       unique(locations), hrefs_at_locs)
 }
