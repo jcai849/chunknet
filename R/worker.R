@@ -65,7 +65,7 @@ get_data <- function(header_extraction, audience_extraction) {
 		data_hrefs <- extract(orcv::header(event), header_extraction)
 		audience <- audience_extraction(event)
 		data <- lapply(data_hrefs, register_referenced_data)
-		register_audience(data, list(audience))
+		lapply(data, register_audience, list(audience))
 	}
 }
 getData <- get_data("GET /data/(.*)", orcv::fd)

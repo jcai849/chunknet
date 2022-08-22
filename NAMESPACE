@@ -1,8 +1,11 @@
 export(
 	LOCATOR,
 	async_pull,
+	extract,
+	get_host_locations,
 	kill_all_nodes,
 	locator_node,
+	post_locations,
 	pull,
 	push,
 	remote_call,
@@ -12,3 +15,6 @@ export(
 S3method(pull, ChunkReference)
 S3method(pull, character)
 S3method(push, default)
+
+S3method(register_audience, Chunk)
+S3method(register_audience, ChunkStub)
