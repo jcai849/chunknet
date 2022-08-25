@@ -44,7 +44,7 @@ remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
 }
 
 push <- function(x, locations, ...) UseMethod("push", x)
-push.default <- function(x, locations, post_locs=TRUE, ...) { # returns list of chunks
+push.default <- function(x, locations, post_locs=TRUE, ...) { # returns list of chunkrefs
 	locations <- if (missing(locations)) { 
                 get_least_loaded_locations(1)
         } else if (is.character(locations)) {
@@ -57,9 +57,14 @@ push.default <- function(x, locations, post_locs=TRUE, ...) { # returns list of 
 	post_data(sapply(chunkrefs, function(x) get("href", x)), x, locations)
 	chunkrefs
 }
-push.Chunk <- function(x, location, ...) {
-	post_data(x$href, x$data, location)
+push.Chunk <- function(x, locations, ...) {
+	post_data(x$href, x$data, locations)
 	x
+}
+push.list <- function(x, locations, ...) {
+	if (all(sapply(x, inherits, "Chunk"))) {
+		post_data(sapply(x, href), sapply(x, data), locations)
+	} else NextMethod()
 }
 
 post_data <- function(hrefs, values, locations) {

@@ -1,44 +1,94 @@
 Worker <- new.env()
 with(Worker, {
-	DataStore <- new.env(emptyenv()) # data_href -> chunk (value/stub)
+	DataStore <- new.env(emptyenv()) # data_href -> [awaited]chunk
 	CompStore <- new.env(emptyenv()) # (prereq|comp)_href -> env of computations
+	WaitingFD <- data.frame(FD=as.FD(integer(0)), href=character)
 })
 
-register_audience <- function(x, audience) {
-	stopifnot(is.list(audience))
-	UseMethod("register_audience", x)
+postData <- function(event) {
+	hrefs <- extract(orcv::header(event), "POST /data/(.*)")
+	data <- orcv::payload(event)
+	stopifnot(length(hrefs) == length(data))
+	register_posted_data(hrefs, data)
 }
-register_audience.Chunk <- function(x, audience) {
-	lapply(audience, function(loc) if (!(orcv::is.Location(loc) && loc == orcv::location())) push(x, loc))
+register_posted_data <- function(hrefs, data) {
+	chunks <- mapply(Chunk, hrefs, data)
+	stubs_i <- hrefs %in% ls(Worker$DataStore)
+	stubs <- mget(hrefs[stubs_i], Worker$DataStore)
+	transfer_audience(stubs, chunks[stubs_i])
+	mapply(assign, hrefs, chunks, MoreArgs=Worker$DataStore)
+	##
+	prereq_i <- hrefs %in% ls(Worker$CompStore)
+	mapply(function(href, chunk) {
+			computations <- get(href, Worker$CompStore)
+			eapply(computations, update_comp_args, chunk) },
+		hrefs[prereq_i], chunks[prereq_i])
 }
-register_audience.ChunkStub <- function(x, audience) x$audience <- c(x$audience, audience)
+transfer_audience <- function(stubs, chunks) {
+	push(chunks, sapply(stubs, audience))
+	avail_chunks_i <- Worker$WaitingFD$href %in% sapply(chunks, href)
+	avail_fds_i <- ! Worker$WaitingFD$FD[avail_chunks_i] %in% Worker$WaitingFD$FD[!avail_chunks_i]
+	send_i <- seq_along(Worker$WaitingFD$FD)[avail_chunks_i][avail_fds_i]
+	push(chunks, Worker$WaitingFD$FD[send_i])
+	Worker$WaitingFD <- Worker$WaitingFD[-send_i,]
+}
+update_comp_args <- function(computation, chunk) {
+	stopifnot(inherits(computation, "Computation"))
+	stopifnot(inherits(chunk, "Chunk"))
+	computation$arguments[[match(chunk$href, sapply(computation$arguments, "[[", "href"))]] <- chunk
+	if (all(data_avail(computation))) run_comp(computation)
+}
 
-register_posted_data <- function(href, data) {
-	log("Registering data with href %s", href)
-	chunk <- Chunk(href, data)
-	if (exists(href, Worker$DataStore)) {
-		stub <- get(href, Worker$DataStore)
-		register_audience(chunk, stub$audience)
+get_data <- function(header_extraction, audience_extraction) {
+	function(event) {
+		data_hrefs <- extract(orcv::header(event), header_extraction)
+		audience <- audience_extraction(event)
+		chunks <- register_referenced_data(data_hrefs)
+		register_audience(audience, chunks)
 	}
-	assign(href, chunk, Worker$DataStore)
-	if (exists(href, Worker$CompStore)) {
-		computations <- get(href, Worker$CompStore)
-		eapply(computations, update_comp_args, chunk)
+}
+getData <- get_data("GET /data/(.*)", orcv::fd)
+asyncGetData <- get_data("GET /async/data/(.*)", orcv::location)
+register_referenced_data <- function(hrefs) {
+	external_chunks_i <- ! hrefs %in% ls(Worker$DataStore)
+	async_pull(hrefs[external_chunks_i])
+	external_chunks <- lapply(hrefs[external_chunks_i],
+				  function(href) assign(href, AwaitedChunk(href), Worker$DataStore))
+	internal_chunks <- mget(hrefs[!external_chunks_i], Worker$DataStore)
+	chunks <- vector("list", length(hrefs))
+	chunks[external_chunks_i] <- external_chunks
+	chunks[!external_chunks_i] <- internal_chunks
+	chunks
+}
+register_audience <- function(audience, chunks) {
+	UseMethod("register_audience", audience)
+}
+register_audience.FD <- function(audience, chunks) {
+	if (all(sapply(chunks, inherits, "Chunk"))) {
+		push(chunks, audience) 
+	} else {
+		Worker$WaitingFD <- rbind(Worker$WaitingFD,
+		data.frame(FD=audience, href=sapply(chunks, href))
 	}
 }
-
-register_referenced_data <- function(href) {
-	if (!exists(href, Worker$DataStore)) {
-		async_pull(href)
-		assign(href, ChunkStub(href), Worker$DataStore)
-	} else get(href, Worker$DataStore)
+register_audience.Location <- function(audience, chunks) {
+	avail <- sapply(chunks, inherits, "Chunk")
+	push(chunks[avail], audience)
+	mapply(assign, "audience", audience, chunks[!avail])
 }
 
-register_arg <- function(prereq, comp) {
-	register_prereq(prereq, comp)		# fills out compstore
-	register_referenced_data(prereq$href)	# fills out datastore
+putComputation <- function(event) {
+	computation_href <- extract(orcv::header(event), "PUT /computation/(.*)")
+	compref <- orcv::payload(event)
+	arguments <- register_args(compref$arguments, compref)
+	computation <- Computation(compref, arguments)
+	assign(computation$output_href, AwaitedChunk(computation$output_href), Worker$DataStore)
+	if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
 }
-
+register_args <- function(prereqs, comp) {
+	register_prereq(prereqs, comp)			# fills out compstore
+	register_referenced_data(sapply(prereqs, href))	# fills out datastore
+}
 register_prereq <- function(prereq, comp) {
 	associated_comps <- if (exists(prereq$href, Worker$CompStore)) {
 				get(prereq$href, Worker$CompStore)
@@ -47,51 +97,10 @@ register_prereq <- function(prereq, comp) {
 			    }
 	assign(comp$href, comp, associated_comps)
 }
-
 data_avail <- function(computation) {
 	stopifnot(inherits(computation, "Computation"))
 	sapply(computation$arguments, inherits, "Chunk")
 }
-
-postData <- function(event) {
-	hrefs <- extract(orcv::header(event), "POST /data/(.*)")
-	data <- orcv::payload(event)
-	stopifnot(length(hrefs) == length(data))
-	mapply(register_posted_data, hrefs, data)
-}
-
-get_data <- function(header_extraction, audience_extraction) {
-	function(event) {
-		data_hrefs <- extract(orcv::header(event), header_extraction)
-		audience <- audience_extraction(event)
-		data <- lapply(data_hrefs, register_referenced_data)
-		lapply(data, register_audience, list(audience))
-	}
-}
-getData <- get_data("GET /data/(.*)", orcv::fd)
-asyncGetData <- get_data("GET /async/data/(.*)", orcv::location)
-
-putComputation <- function(event) {
-	computation_href <- extract(orcv::header(event), "PUT /computation/(.*)")
-	compref <- orcv::payload(event)
-	arguments <- lapply(compref$arguments, register_arg, compref)
-	computation <- Computation(compref, arguments)
-	assign(computation$output_href, ChunkStub(computation$output_href), Worker$DataStore)
-	if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
-}
-
-deleteData <- function(event) {
-       hrefs <- extract(orcv::header(event), "DELETE /data/(.*)")
-       if (length(hrefs)) rm(list=hrefs, pos=Worker$DataStore)
-}
-
-update_comp_args <- function(computation, chunk) {
-	stopifnot(inherits(computation, "Computation"))
-	stopifnot(inherits(chunk, "Chunk"))
-	computation$arguments[[match(chunk$href, sapply(computation$arguments, "[[", "href"))]] <- chunk
-	if (all(data_avail(computation))) run_comp(computation)
-}
-
 run_comp <- function(computation) {
 	log("Running computation")
 	args <- lapply(computation$arguments, "[[", "data")
@@ -99,9 +108,13 @@ run_comp <- function(computation) {
 	lapply(computation$arguments, prereq_cleanup, computation) # some way to do implicitly with finaliser?
 	register_posted_data(computation$output_href, result)
 }
-
 prereq_cleanup <- function(prereq, associated_computation) {
 	comprefs <- get(prereq$href, Worker$CompStore)
 	rm(list=associated_computation$href, pos=comprefs)
 	if (!length(comprefs)) rm(list=prereq$href, pos=Worker$CompStore)
+}
+
+deleteData <- function(event) {
+       hrefs <- extract(orcv::header(event), "DELETE /data/(.*)")
+       if (length(hrefs)) rm(list=hrefs, pos=Worker$DataStore)
 }

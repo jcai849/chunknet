@@ -20,9 +20,12 @@ Chunk <- function(id=uuid::UUIDgenerate(), data) {
 	chunk
 }
 
-ChunkStub <- function(id=uuid::UUIDgenerate()) {
+href <- function(x) get("href", x)
+data <- function(x) get("data", x)
+
+AwaitedChunk <- function(id=uuid::UUIDgenerate()) {
 	stub <- Href(id)
-	class(stub) <- c("ChunkStub", class(stub))
+	class(stub) <- c("AwaitedChunk", class(stub))
 	stub$audience <- list()
 	stub
 }
@@ -46,7 +49,7 @@ ComputationReference <- function(procedure, arguments) {
 Computation <- function(ComputationReference, arguments) {
 	stopifnot(inherits(ComputationReference, "ComputationReference"))
 	stopifnot(is.list(arguments))
-	stopifnot(all(sapply(arguments, inherits, c("Chunk", "ChunkStub"))))
+	stopifnot(all(sapply(arguments, inherits, c("Chunk", "AwaitedChunk"))))
 	comp <- ComputationReference
 	comp$arguments <- arguments
 	class(comp) <- c("Computation", class(comp))
