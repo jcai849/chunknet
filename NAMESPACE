@@ -14,6 +14,7 @@ export(
 
 S3method(pull, ChunkReference)
 S3method(pull, character)
+S3method(pull, list)
 S3method(push, default)
 
 S3method(register_audience, Chunk)

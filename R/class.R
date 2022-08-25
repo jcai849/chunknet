@@ -5,9 +5,10 @@ Href <- function(id=uuid::UUIDgenerate()) {
        href
 }
 
-ChunkReference <- function(id=uuid::UUIDgenerate(), init_loc) {
+ChunkReference <- function(id=uuid::UUIDgenerate(), init_loc, gen_comp) {
 	chunkref <- Href(id)
 	chunkref$init_loc <- init_loc
+	chunkref$gen_comp <- gen_comp
 	class(chunkref) <- c("ChunkReference", class(chunkref))
 	reg.finalizer(chunkref, delete_chunk)
 	chunkref

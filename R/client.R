@@ -40,7 +40,7 @@ remote_call <- function(procedure, arguments, target, post_locs=TRUE) {
 	compref <- ComputationReference(procedure, arguments)
 	if (post_locs) post_locations(compref$output_href, location)
 	orcv::send(location, paste0("PUT /computation/", compref$href), compref)
-	ChunkReference(compref$output_href, location)
+	ChunkReference(compref$output_href, location, compref)
 }
 
 push <- function(x, locations, ...) UseMethod("push", x)
@@ -51,7 +51,7 @@ push.default <- function(x, locations, post_locs=TRUE, ...) { # returns list of 
 		get_host_locations(locations)
         } else locations
 
-	chunkrefs <- lapply(locations, function(loc) ChunkReference(init_loc=loc))
+	chunkrefs <- lapply(locations, function(loc) ChunkReference(init_loc=loc, gen_comp=NULL))
 	if (post_locs) post_locations(sapply(chunkrefs, function(x) get("href", x)), locations)
 
 	post_data(sapply(chunkrefs, function(x) get("href", x)), x, locations)
@@ -89,9 +89,13 @@ pull.character <- function(x, ...) { # hrefs
 		      	          locs, hrefs_at_locs))
 	lapply(orcv::receive(fds), orcv::payload)
 }
-pull.ChunkReference <- function(x, ...) {
-	pull(x$href)
+pull.list <- function(x, ...) {
+	stopifnot(all(sapply(x, inherits, "ChunkReference")))
+	chunks <- pull(sapply(x, href))
+	lapply(x, function(x) x$gen_comp <- NULL)
+	chunks
 }
+pull.ChunkReference <- function(x, ...) pull(list(x))
 
 async_pull <- function(hrefs, ...) {
 	stopifnot(is.character(hrefs))
