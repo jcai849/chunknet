@@ -2,7 +2,7 @@ Worker <- new.env()
 with(Worker, {
 	DataStore <- new.env(emptyenv()) # data_href -> [awaited]chunk
 	CompStore <- new.env(emptyenv()) # (prereq|comp)_href -> env of computations
-	WaitingFD <- data.frame(FD=as.FD(integer(0)), href=character)
+	WaitingFD <- data.frame(FD=orcv::as.FD(integer(0)), href=character(0))
 })
 
 postData <- function(event) {
@@ -68,7 +68,7 @@ register_audience.FD <- function(audience, chunks) {
 		push(chunks, audience) 
 	} else {
 		Worker$WaitingFD <- rbind(Worker$WaitingFD,
-		data.frame(FD=audience, href=sapply(chunks, href))
+					data.frame(FD=audience, href=sapply(chunks, href)))
 	}
 }
 register_audience.Location <- function(audience, chunks) {
@@ -78,12 +78,14 @@ register_audience.Location <- function(audience, chunks) {
 }
 
 putComputation <- function(event) {
-	computation_href <- extract(orcv::header(event), "PUT /computation/(.*)")
-	compref <- orcv::payload(event)
-	arguments <- register_args(compref$arguments, compref)
-	computation <- Computation(compref, arguments)
-	assign(computation$output_href, AwaitedChunk(computation$output_href), Worker$DataStore)
-	if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
+	computation_hrefs <- extract(orcv::header(event), "PUT /computation/(.*)")
+	comprefs <- orcv::payload(event)
+	mapply(function(compref_href, compref) {
+		arguments <- register_args(compref$arguments, compref)
+		computation <- Computation(compref, arguments)
+		assign(computation$output_href, AwaitedChunk(computation$output_href), Worker$DataStore)
+		if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
+	}, computation_hrefs, comprefs, SIMPLIFY=FALSE)
 }
 register_args <- function(prereqs, comp) {
 	register_prereq(prereqs, comp)			# fills out compstore

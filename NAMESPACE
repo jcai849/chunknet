@@ -8,7 +8,7 @@ export(
 	post_locations,
 	pull,
 	push,
-	remote_call,
+	do.ccall,
 	worker_node
 )
 
@@ -17,5 +17,5 @@ S3method(pull, character)
 S3method(pull, list)
 S3method(push, default)
 
-S3method(register_audience, Chunk)
-S3method(register_audience, ChunkStub)
+S3method(register_audience, FD)
+S3method(register_audience, Location)
