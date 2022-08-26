@@ -19,12 +19,10 @@ get_host_locations <- get_locs("/host/") #takes char vector of hosts
 get_least_loaded_locationss <- get_locs("/node/") # takes integer n locations
 
 do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
-	# procedures = list of procs or char vector
-	# argument = list of lists of args for each proc
+	# procedures = list of procs or char vector (recycled to match argument list length)
+	# argument_lists = list of lists of args for each proc
 	# targets = list of targets aligned with other args
 
-	stopifnot(length(procedures) == length(argument_lists))
-	
 	chunkref_args_i <- rapply(argument_lists, function(...) T,
 				classes="ChunkReference", deflt=F, how="list")
 
