@@ -9,7 +9,7 @@ post_locations <- function(hrefs, locations) {
 get_locs <- function(method_arg) function(ids) {
 	request <- paste0("GET ", method_arg, if (missing(ids)) NULL else paste(ids, collapse=','))
 	fd <- orcv::send(LOCATOR(), request, keep_conn=T)
-	locs <- orcv::payload(orcv::receive(fd)[[1]])
+	locs <- orcv::payload(unlist(orcv::receive(fd), recursive=FALSE))
 	stopifnot(orcv::is.Location(locs),
 		  length(locs) == length(ids))
 	invisible(locs)
@@ -35,9 +35,9 @@ do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
 		} else if (!any(chunkref_args)) {
 			TRUE # add to tally of least_loaded_locs needed
 		} else if (!all(sapply(clocs <- lapply(arguments[chunkref_args], function(x) get("init_loc", x)), is.null))) {
-			clocs[!sapply(clocs, is.null)][[1]]
+			clocs[!sapply(clocs, is.null)][[1]] # pick the loc of first cached chunkref
 		} else {
-			arguments[chunkref_args][[1]]$href
+			arguments[chunkref_args][[1]]$href # pick the loc of first non-cached chunkref
 		}}, argument_lists, targets, chunkref_args_i,
 		SIMPLIFY=FALSE)
 	hrefs <- sapply(locations, is.character)
