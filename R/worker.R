@@ -25,7 +25,7 @@ register_posted_data <- function(hrefs, data) {
 		hrefs[prereq_i], chunks[prereq_i])
 }
 transfer_audience <- function(stubs, chunks) {
-	push(chunks, sapply(stubs, audience))
+	push(chunks, sapply(stubs, function(x) get("audience", x)))
 	avail_chunks_i <- Worker$WaitingFD$href %in% sapply(chunks, href)
 	avail_fds_i <- ! Worker$WaitingFD$FD[avail_chunks_i] %in% Worker$WaitingFD$FD[!avail_chunks_i]
 	send_i <- seq_along(Worker$WaitingFD$FD)[avail_chunks_i][avail_fds_i]

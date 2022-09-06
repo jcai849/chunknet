@@ -3,32 +3,33 @@ post_locations <- function(hrefs, locations) {
 	stopifnot(length(locations) > 0,
 		  length(hrefs) == length(locations))
 	fd <- orcv::send(LOCATOR(), paste0("POST /data/", paste(hrefs, collapse=',')), locations, keep_conn=T)
-	invisible(orcv::receive(fd))
+	invisible(orcv::receive(fd, simplify=FALSE))
 }
 
 get_locs <- function(method_arg) function(ids) {
 	request <- paste0("GET ", method_arg, if (missing(ids)) NULL else paste(ids, collapse=','))
 	fd <- orcv::send(LOCATOR(), request, keep_conn=T)
-	locs <- orcv::payload(unlist(orcv::receive(fd), recursive=FALSE))
+	locs <- orcv::payload(orcv::receive(fd, simplify=FALSE)[[1]])
 	stopifnot(orcv::is.Location(locs),
 		  length(locs) == length(ids))
 	invisible(locs)
 }
 get_locations <- get_locs("/data/") # takes char vector of hrefs
 get_host_locations <- get_locs("/host/") #takes char vector of hosts
-get_least_loaded_locationss <- get_locs("/node/") # takes integer n locations
+get_least_loaded_locations <- get_locs("/node/") # takes integer n locations
 
 do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
 	# procedures = list of procs or char vector (recycled to match argument list length)
 	# argument_lists = list of lists of args for each proc
 	# targets = list of targets aligned with other args
 
-	chunkref_args_i <- rapply(argument_lists, function(...) T,
-				classes="ChunkReference", deflt=F, how="list")
+	chunkref_args_i <- lapply(rapply(argument_lists, function(...) T,
+					 classes="ChunkReference", deflt=F, how="list"),
+				  simplify2array)
 
-	locations <- mapply(function(arguments, target, chunkref_args) {
-		if (!missing(targets)) {
-			stopifnot(inherits(target, "ChunkReference"))
+	locations <- mapply(function(arguments, targets, chunkref_args) {
+		if (!is.na(targets)) {
+			stopifnot(inherits(targets, "ChunkReference"))
 			target$href
 		} else if (!any(chunkref_args)) {
 			TRUE # add to tally of least_loaded_locs needed
@@ -36,8 +37,9 @@ do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
 			clocs[!sapply(clocs, is.null)][[1]] # pick the loc of first cached chunkref
 		} else {
 			arguments[chunkref_args][[1]]$href # pick the loc of first non-cached chunkref
-		}}, argument_lists, targets, chunkref_args_i,
+		}}, argument_lists, if (missing(targets)) NA else targets, chunkref_args_i,
 		SIMPLIFY=FALSE)
+	browser()
 	hrefs <- sapply(locations, is.character)
 	locations[hrefs] <- get_locations(hrefs)
 	no_loc <- sapply(locations, is.logical)
