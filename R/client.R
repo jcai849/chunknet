@@ -7,6 +7,7 @@ post_locations <- function(hrefs, locations) {
 }
 
 get_locs <- function(method_arg) function(ids) {
+	if (!length(ids) || identical(ids, 0L)) return(orcv::location(0))
 	request <- paste0("GET ", method_arg, if (missing(ids)) NULL else paste(ids, collapse=','))
 	fd <- orcv::send(LOCATOR(), request, keep_conn=T)
 	locs <- orcv::payload(orcv::receive(fd, simplify=FALSE)[[1]])
@@ -22,6 +23,7 @@ do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
 	# procedures = list of procs or char vector (recycled to match argument list length)
 	# argument_lists = list of lists of args for each proc
 	# targets = list of targets aligned with other args
+	# TODO: factor out main subroutines
 
 	chunkref_args_i <- lapply(rapply(argument_lists, function(...) T,
 					 classes="ChunkReference", deflt=F, how="list"),
@@ -39,18 +41,20 @@ do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
 			arguments[chunkref_args][[1]]$href # pick the loc of first non-cached chunkref
 		}}, argument_lists, if (missing(targets)) NA else targets, chunkref_args_i,
 		SIMPLIFY=FALSE)
-	browser()
 	hrefs <- sapply(locations, is.character)
-	locations[hrefs] <- get_locations(hrefs)
+	locations[hrefs] <- get_locations(locations[hrefs])
 	no_loc <- sapply(locations, is.logical)
 	locations[no_loc] <- get_least_loaded_locations(sum(no_loc))
-	locations <- as.Location(unlist(locations, recursive=F))
+	locations <- orcv::as.Location(unlist(locations, recursive=F))
 	
 	args_to_dest <- split(argument_lists, as.factor(locations))
-	new_chunkref_lists <- mapply(function(arguments, location, chunkref_args) {
-				push(arguments[!chunkref_args], location, post_locs=FALSE)
-			}, args_to_dest, unique(locations), chunkref_args_i,
-			SIMPLIFY=FALSE)
+	chunkref_arg_lists <- mapply(function(args_list, location) {
+			args <- unlist(args_list, recursive=F)
+			local_args_i <- !sapply(args, inherits, "ChunkReference")
+			push(args[local_args_i], rep_len(location, sum(local_args_i)), post_locs=FALSE)
+		}
+		args_to_dest, unique(locations))
+	browser()
 	post_locations(sapply(unlist(chunkref_arg_lists, recursive=F), href),
 			sapply(locations, rep, sapply(chunkref_args_i, sum)))
 
@@ -76,6 +80,8 @@ push <- function(x, locations, ...) UseMethod("push", x)
 push.default <- function(x, locations, post_locs=TRUE, ...) { # returns list of chunkrefs
 	locations <- if (missing(locations)) { 
                 get_least_loaded_locations(1)
+	} else if (!length(locations)) {
+		return(list())
         } else if (is.character(locations)) {
 		get_host_locations(locations)
         } else locations
