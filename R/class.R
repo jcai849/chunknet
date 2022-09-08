@@ -47,6 +47,8 @@ ComputationReference <- function(procedure, arguments) {
 	compref
 }
 
+output_href <- function(x) get("output_href", x)
+
 Computation <- function(ComputationReference, arguments) {
 	stopifnot(inherits(ComputationReference, "ComputationReference"))
 	stopifnot(is.list(arguments))

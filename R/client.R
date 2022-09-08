@@ -19,16 +19,17 @@ get_locations <- get_locs("/data/") # takes char vector of hrefs
 get_host_locations <- get_locs("/host/") #takes char vector of hosts
 get_least_loaded_locations <- get_locs("/node/") # takes integer n locations
 
+# procedures = list of procs or char vector
+# argument_lists = list of lists of args for each proc
+# targets = list of targets aligned with other args
 do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
-	# procedures = list of procs or char vector (recycled to match argument list length)
-	# argument_lists = list of lists of args for each proc
-	# targets = list of targets aligned with other args
-
 	locations <- determine_locations(argument_lists, targets)
 	arguments_by_loc <- disperse_arguments(argument_lists, locations)
-	browser()
-	comps_by_loc <- send_computations(procedures, arguments_by_loc, locations, post_locs)
-	unsplit(comps_by_loc, locations)
+	comps_by_loc <- send_computations(procedures, arguments_by_loc, locations)
+	comprefs <- unsplit(comps_by_loc, as.factor(locations))
+	output_hrefs <- sapply(comprefs, output_href)
+	if (post_locs) post_locations(output_hrefs, locations)
+	mapply(ChunkReference, output_hrefs, locations, comprefs, SIMPLIFY=FALSE)
 }
 which_chunkref <- function(argument_lists)
 	rapply(argument_lists, function(...) T, classes="ChunkReference", deflt=F, how="list")
@@ -41,7 +42,7 @@ determine_locations <- function(argument_lists, targets) {
 		} else if (!any(chunkref_args)) {
 			TRUE # add to tally of least_loaded_locs needed
 		} else if (!all(sapply(clocs <- lapply(arguments[chunkref_args], function(x) get("init_loc", x)), is.null))) {
-			clocs[!sapply(clocs, is.null)][[1]] # pick the loc of first cached chunkref
+			clocs[!sapply(clocs, is.null)][[1]] # pick the loc of first cached chunkref, if avail
 		} else {
 			arguments[chunkref_args][[1]]$href # pick the loc of first non-cached chunkref
 		}}, argument_lists, if (missing(targets)) NA else targets, chunkref_args_i,
@@ -54,7 +55,7 @@ determine_locations <- function(argument_lists, targets) {
 }
 disperse_arguments <- function(argument_lists, locations) {
 	args_to_dest <- split(argument_lists, as.factor(locations))
-	chunkref_args_i <- which_chunkref(args_to_dest)
+	chunkref_args_i <- lapply(which_chunkref(args_to_dest), lapply, simplify2array)
 	chunkref_arg_lists <- mapply(function(args_list, location, chunkref_args) {
 			args <- unlist(args_list, recursive=F)
 			local_args_i <- !unlist(chunkref_args)
@@ -71,14 +72,16 @@ disperse_arguments <- function(argument_lists, locations) {
 	post_locations(sapply(new_chunkrefs, href), new_chunkref_locs)
 	chunkref_arg_lists
 }
-send_computations <- function(procedures, arguments_by_loc, locations, post_locs) {
-	comprefs <- mapply(ComputationReference, procedures, arguments, SIMPLIFY=F)
-	if (post_locs) post_locations(sapply(compref, function(x) x$output_href), locations)
-	comps_to_dest <- split(comprefs, as.factor(locations))
-	mapply(function(location, comps) {
-		 orcv::send(locations, paste0("PUT /computation/", sapply(comps, href)), comps)
-		}, unique(locations), comps_to_dest)
-	mapply(ChunkReference, sapply(comprefs, href), locations, comprefs, SIMPLIFY=FALSE)
+send_computations <- function(procedures, arguments_by_loc, locations) {
+	comps_to_dest <- split(procedures, as.factor(locations))
+	mapply(function(procs, args, location) {
+			comprefs <- mapply(ComputationReference, procs, args, SIMPLIFY=FALSE)
+			orcv::send(location,
+				   paste0("PUT /computation/", paste(sapply(comprefs, href), collapse=',')),
+				   comprefs)
+			comprefs
+		}, comps_to_dest, arguments_by_loc, unique(locations),
+		SIMPLIFY=FALSE)
 }
 
 push <- function(x, locations, ...) UseMethod("push", x)
