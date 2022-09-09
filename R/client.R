@@ -106,7 +106,7 @@ push.Chunk <- function(x, locations, ...) {
 }
 push.list <- function(x, locations, ...) {
 	if (all(sapply(x, inherits, "Chunk"))) {
-		post_data(sapply(x, href), sapply(x, data), locations)
+		post_data(sapply(x, href), lapply(x, data), locations)
 	} else NextMethod()
 }
 
@@ -124,6 +124,7 @@ post_data <- function(hrefs, values, locations) {
 
 pull <- function(x, ...) UseMethod("pull", x)
 pull.character <- function(x, ...) { # hrefs
+	if (!length(x)) return()
 	locations <- get_locations(x)
 	hrefs_at_locs <- split(x, as.factor(locations))
 	locs <- unique(locations)
@@ -141,6 +142,7 @@ pull.list <- function(x, ...) {
 pull.ChunkReference <- function(x, ...) pull(list(x))
 
 async_pull <- function(hrefs, ...) {
+	if (!length(hrefs)) return()
 	stopifnot(is.character(hrefs))
 	location <- get_locations(hrefs)
 	hrefs_at_locs <- split(hrefs, as.factor(locations))

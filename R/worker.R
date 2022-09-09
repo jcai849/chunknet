@@ -16,21 +16,25 @@ register_posted_data <- function(hrefs, data) {
 	stubs_i <- hrefs %in% ls(Worker$DataStore)
 	stubs <- mget(hrefs[stubs_i], Worker$DataStore)
 	transfer_audience(stubs, chunks[stubs_i])
-	mapply(assign, hrefs, chunks, MoreArgs=Worker$DataStore)
-	##
+	for (i in seq_along(hrefs)) assign(hrefs[[i]], chunks[[i]], Worker$DataStore)
 	prereq_i <- hrefs %in% ls(Worker$CompStore)
-	mapply(function(href, chunk) {
-			computations <- get(href, Worker$CompStore)
-			eapply(computations, update_comp_args, chunk) },
-		hrefs[prereq_i], chunks[prereq_i])
+	for (i in seq_along(hrefs[prereq_i])) {
+		computations <- get(hrefs[prereq_i][i], Worker$CompStore)
+		eapply(computations, update_comp_args, chunks[prereq_i][[i]])
+	}
 }
 transfer_audience <- function(stubs, chunks) {
-	push(chunks, sapply(stubs, function(x) get("audience", x)))
-	avail_chunks_i <- Worker$WaitingFD$href %in% sapply(chunks, href)
-	avail_fds_i <- ! Worker$WaitingFD$FD[avail_chunks_i] %in% Worker$WaitingFD$FD[!avail_chunks_i]
-	send_i <- seq_along(Worker$WaitingFD$FD)[avail_chunks_i][avail_fds_i]
-	push(chunks, Worker$WaitingFD$FD[send_i])
-	Worker$WaitingFD <- Worker$WaitingFD[-send_i,]
+	if (!length(stubs)) return()
+	loc_audiences <- lapply(stubs, function(x) get("audience", x))
+	stubs_with_loc_audience_i <- lengths(loc_audiences) > 0L
+	mapply(push, chunks[stubs_with_loc_audience_i], loc_audiences[stubs_with_loc_audience_i])
+	fd_audiences <- sapply(stubs, href) 
+	stubs_with_fd_audience_i <- fd_audiences %in% Worker$WaitingFD$href
+	for (chunk in chunks[stubs_with_fd_audience_i]) {
+		avail_fds_i <- Worker$WaitingFD$href %in% href(chunk)
+		push(chunk, Worker$WaitingFD$FD[avail_fds_i])
+		Worker$WaitingFD <- Worker$WaitingFD[!avail_fds_i,]
+	}
 }
 update_comp_args <- function(computation, chunk) {
 	stopifnot(inherits(computation, "Computation"))
@@ -44,7 +48,7 @@ get_data <- function(header_extraction, audience_extraction) {
 		data_hrefs <- extract(orcv::header(event), header_extraction)
 		audience <- audience_extraction(event)
 		chunks <- register_referenced_data(data_hrefs)
-		register_audience(audience, chunks)
+		register_audience(rep(audience, length(chunks)), chunks)
 	}
 }
 getData <- get_data("GET /data/(.*)", orcv::fd)
@@ -80,24 +84,24 @@ register_audience.Location <- function(audience, chunks) {
 putComputation <- function(event) {
 	computation_hrefs <- extract(orcv::header(event), "PUT /computation/(.*)")
 	comprefs <- orcv::payload(event)
-	mapply(function(compref_href, compref) {
-		arguments <- register_args(compref$arguments, compref)
+	for (compref in comprefs) {
+		arguments <- register_referenced_data(sapply(compref$arguments, href))	# fills out datastore
+		names(arguments) <- names(compref$arguments)
 		computation <- Computation(compref, arguments)
+		register_prereqs(arguments, computation)				# fills out compstore
 		assign(computation$output_href, AwaitedChunk(computation$output_href), Worker$DataStore)
 		if (!length(computation$arguments) || all(data_avail(computation))) run_comp(computation)
-	}, computation_hrefs, comprefs, SIMPLIFY=FALSE)
+	}
 }
-register_args <- function(prereqs, comp) {
-	register_prereq(prereqs, comp)			# fills out compstore
-	register_referenced_data(sapply(prereqs, href))	# fills out datastore
-}
-register_prereq <- function(prereq, comp) {
-	associated_comps <- if (exists(prereq$href, Worker$CompStore)) {
-				get(prereq$href, Worker$CompStore)
-			    } else {
-				assign(prereq$href, new.env(parent=emptyenv()), Worker$CompStore)
-			    }
-	assign(comp$href, comp, associated_comps)
+register_prereqs <- function(prereqs, comp) {
+	lapply(prereqs, function(prereq, comp) {
+		associated_comps <- if (exists(prereq$href, Worker$CompStore)) {
+					get(prereq$href, Worker$CompStore)
+				    } else {
+					assign(prereq$href, new.env(parent=emptyenv()), Worker$CompStore)
+				    }
+		assign(comp$href, comp, associated_comps)
+	}, comp)
 }
 data_avail <- function(computation) {
 	stopifnot(inherits(computation, "Computation"))
@@ -108,7 +112,7 @@ run_comp <- function(computation) {
 	args <- lapply(computation$arguments, "[[", "data")
 	result <- tryCatch(do.call(computation$procedure, args), error=identity)
 	lapply(computation$arguments, prereq_cleanup, computation) # some way to do implicitly with finaliser?
-	register_posted_data(computation$output_href, result)
+	register_posted_data(computation$output_href, list(result))
 }
 prereq_cleanup <- function(prereq, associated_computation) {
 	comprefs <- get(prereq$href, Worker$CompStore)
