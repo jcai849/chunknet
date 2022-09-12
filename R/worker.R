@@ -25,15 +25,28 @@ register_posted_data <- function(hrefs, data) {
 }
 transfer_audience <- function(stubs, chunks) {
 	if (!length(stubs)) return()
+	transfer_loc_audience(stubs, chunks)
+	transfer_fd_audience(stubs, chunks)
+}
+transfer_loc_audience <- function(stubs, chunks) {
 	loc_audiences <- lapply(stubs, function(x) get("audience", x))
 	stubs_with_loc_audience_i <- lengths(loc_audiences) > 0L
 	mapply(push, chunks[stubs_with_loc_audience_i], loc_audiences[stubs_with_loc_audience_i])
+}
+transfer_fd_audience <- function(stubs, chunks) {
 	fd_audiences <- sapply(stubs, href) 
 	stubs_with_fd_audience_i <- fd_audiences %in% Worker$WaitingFD$href
 	for (chunk in chunks[stubs_with_fd_audience_i]) {
 		avail_fds_i <- Worker$WaitingFD$href %in% href(chunk)
-		push(chunk, Worker$WaitingFD$FD[avail_fds_i])
-		Worker$WaitingFD <- Worker$WaitingFD[!avail_fds_i,]
+		for (fd in Worker$WaitingFD$FD[avail_fds_i]) {
+			fd_i <- Worker$WaitingFD$FD == fd
+			chunk_hrefs_for_fd <- Worker$WaitingFD$href[fd_i]
+			if (all(available(chunk_hrefs_for_fd))) {
+				chunk_response <- mget(chunk_hrefs_for_fd, Worker$DataStore)
+				push(chunk_response, fd)
+				Worker$WaitingFD <- Worker$WaitingFD[!fd_i,]
+			}
+		}
 	}
 }
 update_comp_args <- function(computation, chunk) {
@@ -68,7 +81,7 @@ register_audience <- function(audience, chunks) {
 	UseMethod("register_audience", audience)
 }
 register_audience.FD <- function(audience, chunks) {
-	if (all(sapply(chunks, inherits, "Chunk"))) {
+	if (all(available(chunks))) {
 		push(chunks, audience) 
 	} else {
 		Worker$WaitingFD <- rbind(Worker$WaitingFD,
@@ -105,8 +118,9 @@ register_prereqs <- function(prereqs, comp) {
 }
 data_avail <- function(computation) {
 	stopifnot(inherits(computation, "Computation"))
-	sapply(computation$arguments, inherits, "Chunk")
+	available(computation$arguments)
 }
+available <- function(chunk) sapply(chunk, inherits, "Chunk")
 run_comp <- function(computation) {
 	log("Running computation")
 	args <- lapply(computation$arguments, "[[", "data")
