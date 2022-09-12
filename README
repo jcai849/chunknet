@@ -1,0 +1,6 @@
+    _______ _     _ _     _ __   _ _     _ __   _ _______ _______
+    |       |_____| |     | | \  | |____/  | \  | |______    |
+    |_____  |     | |_____| |  \_| |    \_ |  \_| |______    |
+                                                              
+              distributed chunk-based R environment
+            dramatis personae: client, locator, worker
