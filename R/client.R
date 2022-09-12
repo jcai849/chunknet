@@ -1,4 +1,5 @@
 post_locations <- function(hrefs, locations) {
+	if (!length(hrefs)) return()
 	stopifnot(is.character(hrefs), orcv::is.Location(locations))
 	stopifnot(length(locations) > 0,
 		  length(hrefs) == length(locations))
@@ -21,9 +22,9 @@ get_least_loaded_locations <- get_locs("/node/") # takes integer n locations
 
 # procedures = list of procs or char vector
 # argument_lists = list of lists of args for each proc
-# targets = list of targets aligned with other args
-do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
-	locations <- determine_locations(argument_lists, targets)
+# target = target chunkreference
+do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE) {
+	locations <- determine_locations(argument_lists, target)
 	arguments_by_loc <- disperse_arguments(argument_lists, locations)
 	comps_by_loc <- send_computations(procedures, arguments_by_loc, locations)
 	comprefs <- unsplit(comps_by_loc, as.factor(locations))
@@ -31,21 +32,18 @@ do.ccall <- function(procedures, argument_lists, targets, post_locs=TRUE) {
 	if (post_locs) post_locations(output_hrefs, locations)
 	mapply(ChunkReference, output_hrefs, locations, comprefs, SIMPLIFY=FALSE)
 }
-which_chunkref <- function(argument_lists)
-	rapply(argument_lists, function(...) T, classes="ChunkReference", deflt=F, how="list")
-determine_locations <- function(argument_lists, targets) {
-	chunkref_args_i <- lapply(which_chunkref(argument_lists), simplify2array)
-	locations <- mapply(function(arguments, targets, chunkref_args) {
-		if (!is.na(targets)) {
-			stopifnot(inherits(targets, "ChunkReference"))
-			target$href
+determine_locations <- function(argument_lists, target) {
+	chunkref_args_i <- lapply(argument_lists, vapply, inherits, logical(1), "ChunkReference")
+	locations <- mapply(function(arguments, target, chunkref_args) {
+		if (inherits(target, "ChunkReference")) {
+			href(target)
 		} else if (!any(chunkref_args)) {
 			TRUE # add to tally of least_loaded_locs needed
 		} else if (!all(sapply(clocs <- lapply(arguments[chunkref_args], function(x) get("init_loc", x)), is.null))) {
 			clocs[!sapply(clocs, is.null)][[1]] # pick the loc of first cached chunkref, if avail
 		} else {
 			arguments[chunkref_args][[1]]$href # pick the loc of first non-cached chunkref
-		}}, argument_lists, if (missing(targets)) NA else targets, chunkref_args_i,
+		}}, argument_lists, if (missing(target)) NA else list(target), chunkref_args_i,
 		SIMPLIFY=FALSE)
 	hrefs <- sapply(locations, is.character)
 	locations[hrefs] <- get_locations(locations[hrefs])
@@ -55,9 +53,9 @@ determine_locations <- function(argument_lists, targets) {
 }
 disperse_arguments <- function(argument_lists, locations) {
 	args_to_dest <- split(argument_lists, as.factor(locations))
-	chunkref_args_i <- lapply(which_chunkref(args_to_dest), lapply, simplify2array)
+	chunkref_args_i <- lapply(args_to_dest, lapply, vapply, inherits, logical(1), "ChunkReference") 
 	chunkref_arg_lists <- mapply(function(args_list, location, chunkref_args) {
-			args <- unlist(args_list, recursive=F)
+			args <- do.call(c, args_list)
 			local_args_i <- !unlist(chunkref_args)
 			args[local_args_i] <- push(args[local_args_i], rep_len(location, sum(local_args_i)), post_locs=FALSE)
 			relist(args, chunkref_args)
@@ -101,10 +99,11 @@ push.default <- function(x, locations, post_locs=TRUE, ...) { # returns list of 
 	chunkrefs
 }
 push.Chunk <- function(x, locations, ...) {
-	post_data(x$href, x$data, locations)
+	post_data(x$href, list(x$data), locations)
 	x
 }
 push.list <- function(x, locations, ...) {
+	if (!length(x)) return()
 	if (all(sapply(x, inherits, "Chunk"))) {
 		post_data(sapply(x, href), lapply(x, data), locations)
 	} else NextMethod()
@@ -144,9 +143,9 @@ pull.ChunkReference <- function(x, ...) pull(list(x))
 async_pull <- function(hrefs, ...) {
 	if (!length(hrefs)) return()
 	stopifnot(is.character(hrefs))
-	location <- get_locations(hrefs)
+	locations <- get_locations(hrefs)
 	hrefs_at_locs <- split(hrefs, as.factor(locations))
-	mapply(function(loc, hrefs) orcv::send(location, paste0("GET /async/data/", paste(hrefs, collapse=','))),
+	mapply(function(location, hrefs) orcv::send(location, paste0("GET /async/data/", paste(hrefs, collapse=','))),
 	       unique(locations), hrefs_at_locs)
 }
 

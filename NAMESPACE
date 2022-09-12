@@ -16,6 +16,8 @@ S3method(pull, ChunkReference)
 S3method(pull, character)
 S3method(pull, list)
 S3method(push, default)
+S3method(push, list)
+S3method(push, Chunk)
 
 S3method(register_audience, FD)
 S3method(register_audience, Location)

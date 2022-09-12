@@ -41,9 +41,10 @@ transfer_fd_audience <- function(stubs, chunks) {
 		for (fd in Worker$WaitingFD$FD[avail_fds_i]) {
 			fd_i <- Worker$WaitingFD$FD == fd
 			chunk_hrefs_for_fd <- Worker$WaitingFD$href[fd_i]
-			if (all(available(chunk_hrefs_for_fd))) {
-				chunk_response <- mget(chunk_hrefs_for_fd, Worker$DataStore)
-				push(chunk_response, fd)
+			chunk_response <- mget(chunk_hrefs_for_fd, Worker$DataStore)
+			chunk_response[[href(chunk)]] <- chunk
+			if (all(available(chunk_response))) {
+				push(chunk_response, orcv::as.FD(fd))
 				Worker$WaitingFD <- Worker$WaitingFD[!fd_i,]
 			}
 		}
@@ -89,9 +90,9 @@ register_audience.FD <- function(audience, chunks) {
 	}
 }
 register_audience.Location <- function(audience, chunks) {
-	avail <- sapply(chunks, inherits, "Chunk")
+	avail <- available(chunks)
 	push(chunks[avail], audience)
-	mapply(assign, "audience", audience, chunks[!avail])
+	if (!all(avail)) mapply(assign, "audience", audience, chunks[!avail])
 }
 
 putComputation <- function(event) {
