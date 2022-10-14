@@ -1,7 +1,7 @@
 Package: chunknet
 Type: Package
 Title: Create a fast, scalable network of peer-to-peer R processes to distribute computation with larger than memory data.
-Version: 0.1.0
+Version: 1.0
 Date: 2021-12-14
 Author: Jason Cairns
 Maintainer: <jason.cairns@auckland.ac.nz>
