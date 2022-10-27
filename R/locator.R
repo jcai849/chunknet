@@ -25,7 +25,7 @@ getHost <- function(event) {
 
 getNode <- function(event) { # returns least loaded n nodes, assumes loading will take place
 	n <- extract(orcv::header(event), "GET /node/(.*)")
-	least_loaded_i <- rep_len(order(Locator$Nodes[i,]$loading), n)
+	least_loaded_i <- rep_len(order(Locator$Nodes$loading), n)
 	Locator$Nodes[least_loaded_i, "loading"] <- Locator$Nodes$loading[least_loaded_i] + 1
 	Locator$Nodes[least_loaded_i, "location"]
 }
