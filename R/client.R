@@ -130,7 +130,13 @@ pull.character <- function(x, ...) { # hrefs
 	fds <- orcv::as.FD(mapply(function(loc, hrefs)
 				  	orcv::send(loc, paste0("GET /data/", paste(hrefs, collapse=',')), keep_conn=T),
 		      	          locs, hrefs_at_locs))
-	unsplit(lapply(orcv::receive(fds, simplify=FALSE), orcv::payload), as.factor(locations))
+	unsplit(lapply(orcv::receive(fds, simplify=FALSE),
+                       function(x) {
+				payload <- orcv::payload(x)
+				errors <- sapply(payload, inherits, "error")
+				if (any(errors)) stop(payload[errors][[1]]) else payload
+			}),
+                as.factor(locations))
 }
 pull.list <- function(x, ...) {
 	stopifnot(all(sapply(x, inherits, "ChunkReference")))
