@@ -23,8 +23,8 @@ get_least_loaded_locations <- get_locs("/node/") # takes integer n locations
 # procedures = list of procs or char vector
 # argument_lists = list of lists of args for each proc
 # target = target chunkreference
-do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE) {
-	locations <- determine_locations(argument_lists, target)
+do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE, balance=FALSE) {
+	locations <- determine_locations(argument_lists, target, balance)
 	arguments_by_loc <- disperse_arguments(argument_lists, locations)
 	comps_by_loc <- send_computations(procedures, arguments_by_loc, locations)
 	comprefs <- unsplit(comps_by_loc, as.factor(locations))
@@ -32,25 +32,60 @@ do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE) {
 	if (post_locs) post_locations(output_hrefs, locations)
 	mapply(ChunkReference, output_hrefs, locations, comprefs, SIMPLIFY=FALSE)
 }
-determine_locations <- function(argument_lists, target) {
-	chunkref_args_i <- lapply(argument_lists, vapply, inherits, logical(1), "ChunkReference")
-	locations <- mapply(function(arguments, target, chunkref_args) {
-		if (inherits(target, "ChunkReference")) {
-			href(target)
-		} else if (!any(chunkref_args)) {
-			TRUE # add to tally of least_loaded_locs needed
-		} else if (!all(sapply(clocs <- lapply(arguments[chunkref_args], function(x) get("init_loc", x)), is.null))) {
-			clocs[!sapply(clocs, is.null)][[1]] # pick the loc of first cached chunkref, if avail
+
+determine_locations <- function(argument_lists, target, balance) {
+	locations <- orcv::location(length(argument_lists))
+	used_locs <- locations
+	no_locs <- integer()
+	no_cache_i <- integer()
+	no_cache_cr <- list()
+	
+	if (!is.missing(target)) {
+		locations[] <- if (!is.null(init_loc(target))) { href(target)
+			} else get_locations(target)
+		return(locations)
+	}
+
+	for (i in seq_along(argument_lists)) {
+		arg_list <- argument_lists[[i]]
+		chunkref_i <- sapply(arg_list, inherits, "ChunkReference")
+		if (!any(chunkref_i)) {
+			no_locs <- c(no_locs, i)
 		} else {
-			arguments[chunkref_args][[1]]$href # pick the loc of first non-cached chunkref
-		}}, argument_lists, if (missing(target)) NA else list(target), chunkref_args_i,
-		SIMPLIFY=FALSE)
-	hrefs <- sapply(locations, is.character)
-	locations[hrefs] <- get_locations(locations[hrefs])
-	no_loc <- sapply(locations, is.logical)
-	locations[no_loc] <- get_least_loaded_locations(sum(no_loc))
-	orcv::as.Location(unlist(locations, recursive=F))
+			cached_locs_store <- lapply(arg_list[chunkref_i], init_loc)
+			cached_locs <- !sapply(cached_locs, is.null)
+			if (any(cached_locs)) {
+				new_locs <- ! cached_locs_store[cached_locs] %in% used_locs
+				locations[i] <- if (balance && any(new_locs)) {
+					cached_locs_store[cached_locs][[which(new_locs)]]
+				} else cached_locs_store[cached_locs][[1]]
+				if (balance) used_locs <- c(used_locs, locations[i])
+			} else {
+				no_cache_i <- c(no_cache_i, i)
+				no_cache_cr <- c(no_cache_cr, chunkref_i)
+			}
+
+		}
+		
+	}
+
+	if (length(no_locs)) locations[no_locs] <- get_least_loaded_locations(length(no_locs))
+	if (length(no_cache_i)) {
+		no_cache_hrefs <- mapply(function(x, i) href(x[i]),
+					argument_lists[no_cache_i], no_cache_cr, simplify=F)
+		no_cache_locs <- relist(get_locations(simplify2array(no_cache_hrefs)), no_cache_hrefs)
+		for (i in seq_along(no_cache_cr)) {
+			new_locs <- ! no_cache_locs[[i]] %in% used_locs
+			locations[no_cache_i[i]] <- if (balance && any(new_locs)) {
+				no_cache_locs[[i]][which(new_locs)]
+				} else no_cache_locs[[i]][1]
+			if (balance) used_locs <- c(used_locs, locations[no_cache_i[i]])
+		}
+	}
+
+	locations
 }
+
 disperse_arguments <- function(argument_lists, locations) {
 	args_to_dest <- split(argument_lists, as.factor(locations))
 	chunkref_args_i <- lapply(args_to_dest, lapply, vapply, inherits, logical(1), "ChunkReference") 
