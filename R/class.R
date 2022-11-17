@@ -23,6 +23,7 @@ Chunk <- function(id=uuid::UUIDgenerate(), data) {
 
 href <- function(x) get("href", x)
 data <- function(x) get("data", x)
+init_loc <- function(x) get0("init_loc", x)
 
 AwaitedChunk <- function(id=uuid::UUIDgenerate()) {
 	stub <- Href(id)
