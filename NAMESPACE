@@ -1,6 +1,8 @@
 export(
 	LOCATOR,
+	ChunkReferenceArray,
 	async_pull,
+	dapply,
 	extract,
 	get_host_locations,
 	kill_all_nodes,
@@ -18,6 +20,8 @@ S3method(pull, list)
 S3method(push, default)
 S3method(push, list)
 S3method(push, Chunk)
+
+S3method(dapply, ChunkReferenceArray)
 
 S3method(register_audience, FD)
 S3method(register_audience, Location)

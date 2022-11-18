@@ -20,6 +20,13 @@ get_locations <- get_locs("/data/") # takes char vector of hrefs
 get_host_locations <- get_locs("/host/") #takes char vector of hosts
 get_least_loaded_locations <- get_locs("/node/") # takes integer n locations
 
+dapply <- function(X, MARGIN, FUN, ..., balance=FALSE) UseMethod("dapply", X)
+dapply.ChunkReferenceArray <- function(X, MARGIN, FUN, ..., balance=FALSE) {
+	if (balance == TRUE) balance <- Balance()
+	resp <- apply(unclass(X), MARGIN, function(x) do.ccall(FUN, c(x, ...), balance=balance))
+	as.ChunkReferenceArray(resp)
+}
+
 # procedures = list of procs or char vector
 # argument_lists = list of lists of args for each proc
 # target = target chunkreference

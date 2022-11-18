@@ -21,6 +21,23 @@ Chunk <- function(id=uuid::UUIDgenerate(), data) {
 	chunk
 }
 
+ChunkReferenceArray <- function(chunkrefs, dim=length(chunkrefs)) {
+	stopifnot(is.list(chunkrefs),
+		  all(sapply(chunkrefs, is.ChunkReference)))
+	as.ChunkReferenceArray(array(chunkrefs, dim))
+}
+
+as.ChunkReferenceArray <- function(x, ...) {
+	stopifnot(is.array(x),
+		  all(sapply(x, is.ChunkReference)))
+	class(x) <- c("ChunkReferenceArray", oldClass(cra))
+	x
+}
+
+is.ChunkReference <- function(x, ...) inherits(x, "ChunkReference")
+is.ChunkReferenceArray <- function(x, ...) inherits(x, "ChunkReferenceArray")
+is.Chunk <- function(x, ...) inherits(x, "Chunk")
+
 href <- function(x) get("href", x)
 data <- function(x) get("data", x)
 init_loc <- function(x) get0("init_loc", x)
@@ -39,7 +56,7 @@ add_audience <- function(stub, member) {
 ComputationReference <- function(procedure, arguments) {
 	stopifnot(is.character(procedure) || is.function(procedure))
 	stopifnot(is.list(arguments))
-	stopifnot(all(sapply(arguments, inherits, "ChunkReference")))
+	stopifnot(all(sapply(arguments, is.ChunkReference)))
 	compref <- Href()
 	class(compref) <- c("ComputationReference", class(compref))
 	compref$procedure <- procedure
@@ -59,6 +76,9 @@ Computation <- function(ComputationReference, arguments) {
 	class(comp) <- c("Computation", class(comp))
 	comp
 }
+
+is.ComputationReference <- function(x, ...) inherits(x, "ComputationReference")
+is.Computation <- function(x, ...) inherits(x, "Computation")
 
 delete <- function(x, ...) {
 	locations <- determine_locations(list(list(x)))
