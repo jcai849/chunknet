@@ -35,7 +35,7 @@ do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE, balance
 
 determine_locations <- function(argument_lists, target, balance) {
 	locations <- orcv::location(length(argument_lists))
-	used_locs <- locations
+	if (!is.missing(balance) && is.logical(balance)) balance <- Balancer()
 	no_locs <- integer()
 	no_cache_i <- integer()
 	no_cache_cr <- list()
@@ -55,18 +55,12 @@ determine_locations <- function(argument_lists, target, balance) {
 			cached_locs_store <- lapply(arg_list[chunkref_i], init_loc)
 			cached_locs <- !sapply(cached_locs, is.null)
 			if (any(cached_locs)) {
-				new_locs <- ! cached_locs_store[cached_locs] %in% used_locs
-				locations[i] <- if (balance && any(new_locs)) {
-					cached_locs_store[cached_locs][[which(new_locs)]]
-				} else cached_locs_store[cached_locs][[1]]
-				if (balance) used_locs <- c(used_locs, locations[i])
+				locations[i] <- select_from_locs(cached_locs_store[cached_locs], balance)
 			} else {
 				no_cache_i <- c(no_cache_i, i)
 				no_cache_cr <- c(no_cache_cr, chunkref_i)
 			}
-
 		}
-		
 	}
 
 	if (length(no_locs)) locations[no_locs] <- get_least_loaded_locations(length(no_locs))
@@ -75,16 +69,22 @@ determine_locations <- function(argument_lists, target, balance) {
 					argument_lists[no_cache_i], no_cache_cr, simplify=F)
 		no_cache_locs <- relist(get_locations(simplify2array(no_cache_hrefs)), no_cache_hrefs)
 		for (i in seq_along(no_cache_cr)) {
-			new_locs <- ! no_cache_locs[[i]] %in% used_locs
-			locations[no_cache_i[i]] <- if (balance && any(new_locs)) {
-				no_cache_locs[[i]][which(new_locs)]
-				} else no_cache_locs[[i]][1]
-			if (balance) used_locs <- c(used_locs, locations[no_cache_i[i]])
+			locations[no_cache_i[i]] <- select_from_locs(no_cache_locs[[i]], balance)
 		}
 	}
 
 	locations
 }
+select_from_locs <- function(locs, balance) {
+	  if (!missing(balance)) {
+		new_locs <- ! locs %in% balance$used_locs
+		selected_loc <- locs[which(new_locs)]
+		if (is.null(selected_loc)) selected_loc <- locs[1]
+		if (balance) balance$used_locs <- c(balance$used_locs, locations[i])
+		selected_loc
+	} else locs[1]
+}
+Balance <- function() structure(new.env(emptyenv()), class="Balance")
 
 disperse_arguments <- function(argument_lists, locations) {
 	args_to_dest <- split(argument_lists, as.factor(locations))
