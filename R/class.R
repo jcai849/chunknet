@@ -30,7 +30,7 @@ ChunkReferenceArray <- function(chunkrefs, dim=length(chunkrefs)) {
 as.ChunkReferenceArray <- function(x, ...) {
 	stopifnot(is.array(x),
 		  all(sapply(x, is.ChunkReference)))
-	class(x) <- c("ChunkReferenceArray", oldClass(cra))
+	class(x) <- c("ChunkReferenceArray", oldClass(x))
 	x
 }
 

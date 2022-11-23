@@ -22,7 +22,7 @@ get_least_loaded_locations <- get_locs("/node/") # takes integer n locations
 
 dapply <- function(X, MARGIN, FUN, ..., balance=FALSE) UseMethod("dapply", X)
 dapply.ChunkReferenceArray <- function(X, MARGIN, FUN, ..., balance=FALSE) {
-	if (balance == TRUE) balance <- Balance()
+	if (balance == TRUE) balance <- Balancer()
 	resp <- apply(unclass(X), MARGIN, function(x) do.ccall(FUN, c(x, ...), balance=balance))
 	as.ChunkReferenceArray(resp)
 }
@@ -42,12 +42,14 @@ do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE, balance
 
 determine_locations <- function(argument_lists, target, balance) {
 	locations <- orcv::location(length(argument_lists))
-	if (!is.missing(balance) && is.logical(balance)) balance <- Balancer()
 	no_locs <- integer()
 	no_cache_i <- integer()
 	no_cache_cr <- list()
+	if (isTRUE(balance)) balance <- Balancer()
+
+	browser()
 	
-	if (!is.missing(target)) {
+	if (!missing(target)) {
 		locations[] <- if (!is.null(init_loc(target))) { href(target)
 			} else get_locations(target)
 		return(locations)
@@ -60,9 +62,9 @@ determine_locations <- function(argument_lists, target, balance) {
 			no_locs <- c(no_locs, i)
 		} else {
 			cached_locs_store <- lapply(arg_list[chunkref_i], init_loc)
-			cached_locs <- !sapply(cached_locs, is.null)
-			if (any(cached_locs)) {
-				locations[i] <- select_from_locs(cached_locs_store[cached_locs], balance)
+			cached_locs_i <- !sapply(cached_locs_store, is.null)
+			if (any(cached_locs_i)) {
+				locations[i] <- select_from_locs(cached_locs_store[cached_locs_i], balance)
 			} else {
 				no_cache_i <- c(no_cache_i, i)
 				no_cache_cr <- c(no_cache_cr, chunkref_i)
@@ -82,16 +84,16 @@ determine_locations <- function(argument_lists, target, balance) {
 
 	locations
 }
-select_from_locs <- function(locs, balance) {
-	  if (!missing(balance)) {
-		new_locs <- ! locs %in% balance$used_locs
+select_from_locs <- function(locs, balance) UseMethod("select_from_locs", balance)
+select_from_locs.Balancer <- function(locs, balance) {
+		new_locs <- ! locs %in% balancer$used_locs
 		selected_loc <- locs[which(new_locs)]
 		if (is.null(selected_loc)) selected_loc <- locs[1]
-		if (balance) balance$used_locs <- c(balance$used_locs, locations[i])
+		balancer$used_locs <- c(balancer$used_locs, locs[i])
 		selected_loc
-	} else locs[1]
 }
-Balance <- function() structure(new.env(emptyenv()), class="Balance")
+select_from_locs.logical <- function(locs, balance) locs[1]
+Balancer <- function() structure(new.env(emptyenv()), class="Balancer")
 
 disperse_arguments <- function(argument_lists, locations) {
 	args_to_dest <- split(argument_lists, as.factor(locations))
