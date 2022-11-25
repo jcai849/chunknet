@@ -22,8 +22,11 @@ get_least_loaded_locations <- get_locs("/node/") # takes integer n locations
 dapply <- function(X, MARGIN, FUN, ..., balance=FALSE) UseMethod("dapply", X)
 dapply.ChunkReferenceArray <- function(X, MARGIN, FUN, ..., balance=FALSE) {
 	if (balance == TRUE) balance <- Balancer()
-	resp <- apply(unclass(X), MARGIN, function(x) do.ccall(FUN, c(x, ...), balance=balance))
-	as.ChunkReferenceArray(resp)
+	resp <- apply(unclass(X), MARGIN,
+		      function(x) {do.ccall(list(FUN), list(c(x, list(...))), balance=balance)})
+	out_dim <- rep(1L, length(dim(X)))
+	out_dim[MARGIN] <- dim(X)[MARGIN]
+	ChunkReferenceArray(unlist(resp), out_dim)
 }
 
 # procedures = list of procs or char vector
@@ -85,14 +88,16 @@ determine_locations <- function(argument_lists, target, balance=FALSE) {
 }
 select_from_locs <- function(locs, balance) UseMethod("select_from_locs", balance)
 select_from_locs.Balancer <- function(locs, balance) {
-		new_locs <- ! locs %in% balancer$used_locs
-		selected_loc <- locs[which(new_locs)]
-		if (is.null(selected_loc)) selected_loc <- locs[1]
-		balancer$used_locs <- c(balancer$used_locs, locs[i])
+		new_locs <- ! locs %in% balance$used_locs
+		selected_loc <- locs[new_locs][1]
+		if (!length(selected_loc)) selected_loc <- locs[1]
+		balance$used_locs <- c(balance$used_locs, selected_loc)
 		selected_loc
 }
 select_from_locs.logical <- function(locs, balance) locs[1]
-Balancer <- function() structure(new.env(emptyenv()), class="Balancer")
+Balancer <- function() { #TODO: convert to a tabulation-based design, else first loc always chosen from used_locs
+	structure(new.env(emptyenv()), class="Balancer")
+}
 
 disperse_arguments <- function(argument_lists, locations) {
 	args_to_dest <- split(argument_lists, as.factor(locations))
