@@ -9,7 +9,7 @@ ChunkReference <- function(id=uuid::UUIDgenerate(), init_loc, gen_comp) {
 	chunkref <- Href(id)
 	chunkref$init_loc <- init_loc
 	chunkref$gen_comp <- gen_comp
-	class(chunkref) <- c("ChunkReference", class(chunkref))
+	class(chunkref) <- "ChunkReference"
 	reg.finalizer(chunkref, delete)
 	chunkref
 }
@@ -30,7 +30,7 @@ ChunkReferenceArray <- function(chunkrefs, dim=length(chunkrefs)) {
 as.ChunkReferenceArray <- function(x, ...) {
 	stopifnot(is.array(x),
 		  all(sapply(x, is.ChunkReference)))
-	class(x) <- c("ChunkReferenceArray", oldClass(x))
+	class(x) <- "ChunkReferenceArray"
 	x
 }
 

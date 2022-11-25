@@ -12,8 +12,7 @@ get_locs <- function(method_arg) function(ids) {
 	request <- paste0("GET ", method_arg, if (missing(ids)) NULL else paste(ids, collapse=','))
 	fd <- orcv::send(LOCATOR(), request, keep_conn=T)
 	locs <- orcv::payload(orcv::receive(fd, simplify=FALSE)[[1]])
-	stopifnot(orcv::is.Location(locs),
-		  length(locs) == length(ids))
+	stopifnot(orcv::is.Location(locs))
 	invisible(locs)
 }
 get_locations <- get_locs("/data/") # takes char vector of hrefs
@@ -40,18 +39,17 @@ do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE, balance
 	mapply(ChunkReference, output_hrefs, locations, comprefs, SIMPLIFY=FALSE)
 }
 
-determine_locations <- function(argument_lists, target, balance) {
+determine_locations <- function(argument_lists, target, balance=FALSE) {
 	locations <- orcv::location(length(argument_lists))
 	no_locs <- integer()
 	no_cache_i <- integer()
 	no_cache_cr <- list()
 	if (isTRUE(balance)) balance <- Balancer()
 
-	browser()
-	
 	if (!missing(target)) {
-		locations[] <- if (!is.null(init_loc(target))) { href(target)
-			} else get_locations(target)
+		locations[] <- if (!is.null(init_loc(target))) {
+				init_loc(target)
+			} else get_locations(href(target))
 		return(locations)
 	}
 
@@ -64,7 +62,8 @@ determine_locations <- function(argument_lists, target, balance) {
 			cached_locs_store <- lapply(arg_list[chunkref_i], init_loc)
 			cached_locs_i <- !sapply(cached_locs_store, is.null)
 			if (any(cached_locs_i)) {
-				locations[i] <- select_from_locs(cached_locs_store[cached_locs_i], balance)
+				cached_locs <- do.call(c, unname(cached_locs_store[cached_locs_i]))
+				locations[i] <- select_from_locs(cached_locs, balance)
 			} else {
 				no_cache_i <- c(no_cache_i, i)
 				no_cache_cr <- c(no_cache_cr, chunkref_i)
