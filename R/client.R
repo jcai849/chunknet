@@ -88,15 +88,18 @@ determine_locations <- function(argument_lists, target, balance=FALSE) {
 }
 select_from_locs <- function(locs, balance) UseMethod("select_from_locs", balance)
 select_from_locs.Balancer <- function(locs, balance) {
-		new_locs <- ! locs %in% balance$used_locs
-		selected_loc <- locs[new_locs][1]
-		if (!length(selected_loc)) selected_loc <- locs[1]
-		balance$used_locs <- c(balance$used_locs, selected_loc)
-		selected_loc
+		keys <- as.character(locs)
+		new_locs <- ! keys %in% names(balance$used_locs)
+		if (any(new_locs)) balance$used_locs[keys[new_locs]] <- 0L
+		selected_i <- which.min(balance$used_locs[keys])
+		balance$used_locs[keys][selected_i] <- balance$used_locs[keys][selected_i] + 1L
+		locs[selected_i]
 }
 select_from_locs.logical <- function(locs, balance) locs[1]
-Balancer <- function() { #TODO: convert to a tabulation-based design, else first loc always chosen from used_locs
-	structure(new.env(emptyenv()), class="Balancer")
+Balancer <- function() {
+	x <- structure(new.env(emptyenv()), class="Balancer")
+	x$used_locs <- table(NULL)
+	x
 }
 
 disperse_arguments <- function(argument_lists, locations) {
