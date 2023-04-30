@@ -27,7 +27,7 @@ ChunkReferenceArray.list <- function(chunkrefs, dim=length(chunkrefs)) {
 	as.ChunkReferenceArray(array(chunkrefs, dim))
 }
 ChunkReferenceArray.ChunkReference <- function(chunkrefs, dim) {
-	ChunkReferenceArray(list(chunkrefs))
+	ChunkReferenceArray(list(chunkrefs), dim=1)
 }
 
 as.ChunkReferenceArray <- function(x, ...) {
