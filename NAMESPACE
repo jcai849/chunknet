@@ -25,3 +25,6 @@ S3method(dapply, ChunkReferenceArray)
 
 S3method(register_audience, FD)
 S3method(register_audience, Location)
+
+S3method(ChunkReferenceArray, ChunkReference)
+S3method(ChunkReferenceArray, list)

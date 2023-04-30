@@ -21,10 +21,13 @@ Chunk <- function(id=uuid::UUIDgenerate(), data) {
 	chunk
 }
 
-ChunkReferenceArray <- function(chunkrefs, dim=length(chunkrefs)) {
-	stopifnot(is.list(chunkrefs),
-		  all(sapply(chunkrefs, is.ChunkReference)))
+ChunkReferenceArray <- function(chunkrefs, dim) UseMethod("ChunkReferenceArray", chunkrefs)
+ChunkReferenceArray.list <- function(chunkrefs, dim=length(chunkrefs)) {
+	stopifnot(all(sapply(chunkrefs, is.ChunkReference)))
 	as.ChunkReferenceArray(array(chunkrefs, dim))
+}
+ChunkReferenceArray.ChunkReference <- function(chunkrefs, dim) {
+	ChunkReferenceArray(list(chunkrefs))
 }
 
 as.ChunkReferenceArray <- function(x, ...) {
