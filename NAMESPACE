@@ -1,6 +1,7 @@
 export(
 	LOCATOR,
 	ChunkReferenceArray,
+	is.ChunkReference,
 	async_pull,
 	dapply,
 	extract,
