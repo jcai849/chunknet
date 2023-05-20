@@ -6,4 +6,4 @@ install: /usr/local/lib/R/library/chunknet/
 tags:
 	uctags -R 
 test:
-	cd tests && tmux new-session \; source-file test.tmux
+	cd inst/dev-tests && tmux new-session \; source-file test.tmux

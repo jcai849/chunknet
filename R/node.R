@@ -76,8 +76,9 @@ loc_cache <- function() {
 LOCATOR <- loc_cache()
 
 log <- function(msg, ...) {
-	if (getOption("chunknetVerbose", default=FALSE))
+	if (getOption("chunknetVerbose", default=FALSE)) {
 		cat(paste0(format(Sys.time(), "%H:%M:%OS9 "), sprintf(msg, ...), "\n"))
+        }
 }
 
 # extract the group given in the pattern from the text, splitting output

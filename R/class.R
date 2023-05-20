@@ -87,6 +87,5 @@ delete <- function(x, ...) {
 	locations <- determine_locations(list(list(x)))
 	hrefs <- href(x)
 	lapply(locations, orcv::send, paste0("DELETE /data/", paste(hrefs, collapse=',')))
-	log("Deleting data location from locator")
-        orcv::send(LOCATOR(), paste0("DELETE /data/", paste(hrefs, collapse=',')))
+	orcv::send(LOCATOR(), paste0("DELETE /data/", paste(hrefs, collapse=',')))
 }
