@@ -1,11 +1,11 @@
-library(chunknet)
+library(largescalechunks)
 
-options(chunknetVerbose = TRUE)
+options(largescalechunksVerbose = TRUE)
 
-orcv::start()
+largescalemessages::start()
 LOCATOR("localhost", 8999L)
-worker1 <- orcv::as.Location("localhost", 9001L)
-worker2 <- orcv::as.Location("localhost", 9002L)
+worker1 <- largescalemessages::as.Location("localhost", 9001L)
+worker2 <- largescalemessages::as.Location("localhost", 9002L)
 Sys.sleep(2)
 a <- push(list(1:3))
 print(pull(a))

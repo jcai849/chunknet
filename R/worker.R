@@ -2,12 +2,12 @@ Worker <- new.env()
 with(Worker, {
 	DataStore <- new.env(emptyenv()) # data_href -> [awaited]chunk
 	CompStore <- new.env(emptyenv()) # (prereq|comp)_href -> env of computations
-	WaitingFD <- data.frame(FD=orcv::as.FD(integer(0)), href=character(0))
+	WaitingFD <- data.frame(FD=largescalemessages::as.FD(integer(0)), href=character(0))
 })
 
 postData <- function(event) {
-	hrefs <- extract(orcv::header(event), "POST /data/(.*)")
-	data <- orcv::payload(event)
+	hrefs <- extract(largescalemessages::header(event), "POST /data/(.*)")
+	data <- largescalemessages::payload(event)
 	stopifnot(length(hrefs) == length(data))
 	register_posted_data(hrefs, data)
 }
@@ -44,7 +44,7 @@ transfer_fd_audience <- function(stubs, chunks) {
 			chunk_response <- mget(chunk_hrefs_for_fd, Worker$DataStore)
 			chunk_response[[href(chunk)]] <- chunk
 			if (all(available(chunk_response))) {
-				push(chunk_response, orcv::as.FD(fd))
+				push(chunk_response, largescalemessages::as.FD(fd))
 				Worker$WaitingFD <- Worker$WaitingFD[!fd_i,]
 			}
 		}
@@ -59,14 +59,14 @@ update_comp_args <- function(computation, chunk) {
 
 get_data <- function(header_extraction, audience_extraction) {
 	function(event) {
-		data_hrefs <- extract(orcv::header(event), header_extraction)
+		data_hrefs <- extract(largescalemessages::header(event), header_extraction)
 		audience <- audience_extraction(event)
 		chunks <- register_referenced_data(data_hrefs)
 		register_audience(rep(audience, length(chunks)), chunks)
 	}
 }
-getData <- get_data("GET /data/(.*)", orcv::fd)
-asyncGetData <- get_data("GET /async/data/(.*)", orcv::location)
+getData <- get_data("GET /data/(.*)", largescalemessages::fd)
+asyncGetData <- get_data("GET /async/data/(.*)", largescalemessages::location)
 register_referenced_data <- function(hrefs) {
 	external_chunks_i <- ! hrefs %in% ls(Worker$DataStore)
 	async_pull(hrefs[external_chunks_i])
@@ -96,8 +96,8 @@ register_audience.Location <- function(audience, chunks) {
 }
 
 putComputation <- function(event) {
-	computation_hrefs <- extract(orcv::header(event), "PUT /computation/(.*)")
-	comprefs <- orcv::payload(event)
+	computation_hrefs <- extract(largescalemessages::header(event), "PUT /computation/(.*)")
+	comprefs <- largescalemessages::payload(event)
 	for (compref in comprefs) {
 		arguments <- register_referenced_data(sapply(compref$arguments, href))	# fills out datastore
 		names(arguments) <- names(compref$arguments)
@@ -136,6 +136,6 @@ prereq_cleanup <- function(prereq, associated_computation) {
 }
 
 deleteData <- function(event) {
-       hrefs <- extract(orcv::header(event), "DELETE /data/(.*)")
+       hrefs <- extract(largescalemessages::header(event), "DELETE /data/(.*)")
        if (length(hrefs)) rm(list=hrefs, pos=Worker$DataStore)
 }
