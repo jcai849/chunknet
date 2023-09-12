@@ -2,7 +2,7 @@ Events <- new.env() # event_name (header) -> handler function
 
 handle <- function(event) {
     events <- names(Events)
-    event_name <- largescalemessages::header(event)
+    event_name <- orcv::header(event)
     handler_name <- events[Vectorize(grepl)(glob2rx(events), event_name)]
     handler <- get(handler_name, Events)
     handler(event)
@@ -10,11 +10,11 @@ handle <- function(event) {
 
 node <- function(init_function) {
         function(address=NULL, port=0L, ..., verbose=FALSE) {
-		options("largescalechunksVerbose" = verbose)
-                largescalemessages::start(address, port, threads=1L)
+		options("chunknetVerbose" = verbose)
+                orcv::start(address, port, threads=1L)
                 init_function(...)
                 repeat {
-                        event <- largescalemessages::receive(keep_conn=TRUE)
+                        event <- orcv::receive(keep_conn=TRUE)
                         handle(event)
                         log("...DONE")
                 }
@@ -29,12 +29,12 @@ non_responding_to_fd <- function(handler) function(event) {
         close(event)
 }
 responding_with_work_started <- function(handler) function(event) {
-        largescalemessages::send(largescalemessages::fd(event), "200")
+        orcv::send(orcv::fd(event), "200")
         handler(event)
 }
 responding_with_result <- function(handler) function(event) {
         res <- handler(event)
-        largescalemessages::send(largescalemessages::fd(event), "RES", res)
+        orcv::send(orcv::fd(event), "RES", res)
 }
 
 on <- function(event, handler) {
@@ -56,7 +56,7 @@ locator_init <- function(...) {
 worker_init <- function(locator_address, locator_port) {
 	log("Worker initialising...")
 	LOCATOR(locator_address, locator_port)
-	largescalemessages::send(LOCATOR(), "POST /node") 
+	orcv::send(LOCATOR(), "POST /node") 
 	on("GET /async/data/*",	non_responding_to_fd(asyncGetData))
 	on("GET /data/*",	responding_internally(getData))
 	on("POST /data/*",	non_responding_to_fd(postData))
@@ -71,12 +71,12 @@ worker_node <- node(worker_init)
 loc_cache <- function() {
 	LOC <- NULL
 	function(host, port)
-	    if (missing(host) || missing(port)) LOC else LOC <<- largescalemessages::as.Location(host, port)
+	    if (missing(host) || missing(port)) LOC else LOC <<- orcv::as.Location(host, port)
 }
 LOCATOR <- loc_cache()
 
 log <- function(msg, ...) {
-	if (getOption("largescalechunksVerbose", default=FALSE)) {
+	if (getOption("chunknetVerbose", default=FALSE)) {
 		cat(paste0(format(Sys.time(), "%H:%M:%OS9 "), sprintf(msg, ...), "\n"))
         }
 }

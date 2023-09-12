@@ -1,18 +1,18 @@
 post_locations <- function(hrefs, locations) {
 	if (!length(hrefs)) return()
-	stopifnot(is.character(hrefs), largescalemessages::is.Location(locations))
+	stopifnot(is.character(hrefs), orcv::is.Location(locations))
 	stopifnot(length(locations) > 0,
 		  length(hrefs) == length(locations))
-	fd <- largescalemessages::send(LOCATOR(), paste0("POST /data/", paste(hrefs, collapse=',')), locations, keep_conn=T)
-	invisible(largescalemessages::receive(fd, simplify=FALSE))
+	fd <- orcv::send(LOCATOR(), paste0("POST /data/", paste(hrefs, collapse=',')), locations, keep_conn=T)
+	invisible(orcv::receive(fd, simplify=FALSE))
 }
 
 get_locs <- function(method_arg) function(ids) {
-	if (!length(ids) || identical(ids, 0L)) return(largescalemessages::location(0))
+	if (!length(ids) || identical(ids, 0L)) return(orcv::location(0))
 	request <- paste0("GET ", method_arg, if (missing(ids)) NULL else paste(ids, collapse=','))
-	fd <- largescalemessages::send(LOCATOR(), request, keep_conn=T)
-	locs <- largescalemessages::payload(largescalemessages::receive(fd, simplify=FALSE)[[1]])
-	stopifnot(largescalemessages::is.Location(locs))
+	fd <- orcv::send(LOCATOR(), request, keep_conn=T)
+	locs <- orcv::payload(orcv::receive(fd, simplify=FALSE)[[1]])
+	stopifnot(orcv::is.Location(locs))
 	invisible(locs)
 }
 get_locations <- get_locs("/data/") # takes char vector of hrefs
@@ -43,7 +43,7 @@ do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE, balance
 }
 
 determine_locations <- function(argument_lists, target, balance=FALSE) {
-	locations <- largescalemessages::location(length(argument_lists))
+	locations <- orcv::location(length(argument_lists))
 	no_locs <- integer()
 	no_cache_i <- integer()
 	no_cache_cr <- list()
@@ -125,7 +125,7 @@ send_computations <- function(procedures, arguments_by_loc, locations) {
 	comps_to_dest <- split(procedures, as.factor(locations))
 	mapply(function(procs, args, location) {
 			comprefs <- mapply(ComputationReference, procs, args, SIMPLIFY=FALSE)
-			largescalemessages::send(location,
+			orcv::send(location,
 				   paste0("PUT /computation/", paste(sapply(comprefs, href), collapse=',')),
 				   comprefs)
 			comprefs
@@ -161,13 +161,13 @@ push.list <- function(x, locations, ...) {
 }
 
 post_data <- function(hrefs, values, locations) {
-	stopifnot(largescalemessages::is.Location(locations) || largescalemessages::is.FD(locations))
+	stopifnot(orcv::is.Location(locations) || orcv::is.FD(locations))
 	stopifnot(is.character(hrefs),
 		  length(hrefs) == length(locations))
 	hrs <- split(hrefs, as.factor(locations))			# group hrefs by location
 	vals <- split(values, as.factor(locations))			# group vals by location
 	locs <- lapply(split(locations, as.factor(locations)), '[[', 1)	# get corresponding locs
-	mapply(function(l, h, v) largescalemessages::send(l, paste0("POST /data/", paste(h, collapse=',')), v),
+	mapply(function(l, h, v) orcv::send(l, paste0("POST /data/", paste(h, collapse=',')), v),
 		locs, hrs, vals)
 	invisible(NULL)
 }
@@ -178,12 +178,12 @@ pull.character <- function(x, ...) { # hrefs
 	locations <- get_locations(x)
 	hrefs_at_locs <- split(x, as.factor(locations))
 	locs <- unique(locations)
-	fds <- largescalemessages::as.FD(mapply(function(loc, hrefs)
-				  	largescalemessages::send(loc, paste0("GET /data/", paste(hrefs, collapse=',')), keep_conn=T),
+	fds <- orcv::as.FD(mapply(function(loc, hrefs)
+				  	orcv::send(loc, paste0("GET /data/", paste(hrefs, collapse=',')), keep_conn=T),
 		      	          locs, hrefs_at_locs))
-	unsplit(lapply(largescalemessages::receive(fds, simplify=FALSE),
+	unsplit(lapply(orcv::receive(fds, simplify=FALSE),
                        function(x) {
-				payload <- largescalemessages::payload(x)
+				payload <- orcv::payload(x)
 				errors <- sapply(payload, inherits, "error")
 				if (any(errors)) stop(payload[errors][[1]]) else payload
 			}),
@@ -202,10 +202,10 @@ async_pull <- function(hrefs, ...) {
 	stopifnot(is.character(hrefs))
 	locations <- get_locations(hrefs)
 	hrefs_at_locs <- split(hrefs, as.factor(locations))
-	mapply(function(location, hrefs) largescalemessages::send(location, paste0("GET /async/data/", paste(hrefs, collapse=','))),
+	mapply(function(location, hrefs) orcv::send(location, paste0("GET /async/data/", paste(hrefs, collapse=','))),
 	       unique(locations), hrefs_at_locs)
 }
 
 kill_all_nodes <- function() {
-	largescalemessages::send(LOCATOR(), "EXIT")
+	orcv::send(LOCATOR(), "EXIT")
 }

@@ -86,6 +86,6 @@ is.Computation <- function(x, ...) inherits(x, "Computation")
 delete <- function(x, ...) {
 	locations <- determine_locations(list(list(x)))
 	hrefs <- href(x)
-	lapply(locations, largescalemessages::send, paste0("DELETE /data/", paste(hrefs, collapse=',')))
-	largescalemessages::send(LOCATOR(), paste0("DELETE /data/", paste(hrefs, collapse=',')))
+	lapply(locations, orcv::send, paste0("DELETE /data/", paste(hrefs, collapse=',')))
+	orcv::send(LOCATOR(), paste0("DELETE /data/", paste(hrefs, collapse=',')))
 }
