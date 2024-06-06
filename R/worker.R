@@ -123,9 +123,10 @@ data_avail <- function(computation) {
 }
 available <- function(chunk) sapply(chunk, inherits, "Chunk")
 run_comp <- function(computation) {
-	log("Running computation")
 	args <- lapply(computation$arguments, "[[", "data")
+	log("Running computation")
 	result <- tryCatch(do.call(computation$procedure, args), error=identity)
+	log("Completed computation")
 	lapply(computation$arguments, prereq_cleanup, computation) # some way to do implicitly with finaliser?
 	register_posted_data(computation$output_href, list(result))
 }
