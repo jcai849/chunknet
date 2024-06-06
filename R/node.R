@@ -15,7 +15,7 @@ node <- function(init_function) {
                 init_function(...)
                 repeat {
                         event <- orcv::receive(keep_conn=TRUE)
-			log("Opening message with header \"%s\"\n", orcv::header(msg))
+			log("Opening message with header \"%s\"\n", orcv::header(event))
                         handle(event)
                         log("...DONE")
                 }
