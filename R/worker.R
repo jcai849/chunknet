@@ -13,11 +13,15 @@ postData <- function(event) {
 }
 register_posted_data <- function(hrefs, data) {
 	chunks <- mapply(Chunk, hrefs, data)
+	# find which chunks are already in the DataStore
 	stubs_i <- hrefs %in% ls(Worker$DataStore)
 	stubs <- mget(hrefs[stubs_i], Worker$DataStore)
+	# respond to any audiences awaiting these chunks
 	transfer_audience(stubs, chunks[stubs_i])
+	# place all chunks in the store
 	for (i in seq_along(hrefs)) assign(hrefs[[i]], chunks[[i]], Worker$DataStore)
 	prereq_i <- hrefs %in% ls(Worker$CompStore)
+	# run any computations awaiting for these chunks as data
 	for (i in seq_along(hrefs[prereq_i])) {
 		computations <- get(hrefs[prereq_i][i], Worker$CompStore)
 		eapply(computations, update_comp_args, chunks[prereq_i][[i]])

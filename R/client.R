@@ -33,7 +33,7 @@ dapply.ChunkReferenceArray <- function(X, MARGIN, FUN, ..., balance=FALSE) {
 # argument_lists = list of lists of args for each proc
 # target = target chunkreference
 do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE, balance=FALSE) {
-	locations <- determine_locations(argument_lists, target, balance)
+	locations <- determine_locations(argument_lists, target, balance) # locations[length(argument_lists)]
 	arguments_by_loc <- disperse_arguments(argument_lists, locations)
 	comps_by_loc <- send_computations(procedures, arguments_by_loc, locations)
 	comprefs <- unsplit(comps_by_loc, as.factor(locations))
@@ -43,50 +43,54 @@ do.ccall <- function(procedures, argument_lists, target, post_locs=TRUE, balance
 }
 
 determine_locations <- function(argument_lists, target, balance=FALSE) {
+  # Initialise values
 	locations <- orcv::location(length(argument_lists))
 	no_locs <- integer()
 	no_cache_i <- integer()
 	no_cache_cr <- list()
 	if (isTRUE(balance)) balance <- Balancer()
 
+  # Get target location
 	if (!missing(target)) {
 		locations[] <- if (!is.null(init_loc(target))) {
 				init_loc(target)
-			} else get_locations(href(target))
+			} else get_locations(href(target)) # GET /data/href -> locations
 		return(locations)
 	}
 
+  # find argument locations (if any)
 	for (i in seq_along(argument_lists)) {
 		arg_list <- argument_lists[[i]]
 		chunkref_i <- sapply(arg_list, inherits, "ChunkReference")
-		if (!any(chunkref_i)) {
-			no_locs <- c(no_locs, i)
-		} else {
+		if (!any(chunkref_i)) {    # No chunkrefs in argument list?
+			no_locs <- c(no_locs, i) # Y: Record no locations
+		} else {                   # N: Check chunkrefs in argument list for locations
 			cached_locs_store <- lapply(arg_list[chunkref_i], init_loc)
 			cached_locs_i <- !sapply(cached_locs_store, is.null)
-			if (any(cached_locs_i)) {
+			if (any(cached_locs_i)) { # Any cached locations in argument list?
 				cached_locs <- do.call(c, unname(cached_locs_store[cached_locs_i]))
-				locations[i] <- select_from_locs(cached_locs, balance)
-			} else {
+				locations[i] <- select_from_locs(cached_locs, balance) # Y: Use balancer for locations
+			} else {                  # N: Record no cache
 				no_cache_i <- c(no_cache_i, i)
 				no_cache_cr <- c(no_cache_cr, chunkref_i)
 			}
 		}
 	}
 
-	if (length(no_locs)) locations[no_locs] <- get_least_loaded_locations(length(no_locs))
+	if (length(no_locs)) locations[no_locs] <- get_least_loaded_locations(length(no_locs)) # GET /node/ for arglists w/o chunkrefs -> least loaded locations
 	if (length(no_cache_i)) {
 		no_cache_hrefs <- mapply(function(x, i) href(x[i]),
 					argument_lists[no_cache_i], no_cache_cr, simplify=F)
-		no_cache_locs <- relist(get_locations(simplify2array(no_cache_hrefs)), no_cache_hrefs)
+		no_cache_locs <- relist(get_locations(simplify2array(no_cache_hrefs)), no_cache_hrefs) # GET /data/href for arglists w/o caches -> locations
 		for (i in seq_along(no_cache_cr)) {
-			locations[no_cache_i[i]] <- select_from_locs(no_cache_locs[[i]], balance)
+			locations[no_cache_i[i]] <- select_from_locs(no_cache_locs[[i]], balance) # use balancer for returned locations of those w/o caches
 		}
 	}
 
 	locations
 }
 select_from_locs <- function(locs, balance) UseMethod("select_from_locs", balance)
+# TODO: I think there's something off with this...
 select_from_locs.Balancer <- function(locs, balance) {
 		keys <- as.character(locs)
 		new_locs <- ! keys %in% names(balance$used_locs)
@@ -102,6 +106,8 @@ Balancer <- function() {
 	x
 }
 
+# TODO: run through; v. hard to visualise intermediate data structures here.
+# May be source of bugs.
 disperse_arguments <- function(argument_lists, locations) {
 	args_to_dest <- split(argument_lists, as.factor(locations))
 	chunkref_args_i <- lapply(args_to_dest, lapply, vapply, inherits, logical(1), "ChunkReference") 
