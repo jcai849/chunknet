@@ -36,15 +36,52 @@
           text = "exec radian";
         };
 
+        tex = pkgs.texlive.combine {
+          inherit (pkgs.texlive) scheme-medium inconsolata;
+        };
+
+        bundle = pkgs.stdenv.mkDerivation {
+          name = "chunknet-bundle";
+          nativeBuildInputs = [ R_dev ];
+          src = ./.;
+          buildPhase = ''
+            mkdir -p $out
+            R CMD build .
+            cp *.tar.gz $out/
+          '';
+          installPhase = "true";
+        };
+        check =
+          pkgs.runCommand "check"
+            {
+              nativeBuildInputs = [
+                R_dev
+                tex
+                pkgs.html-tidy
+              ];
+              buildInputs = [ bundle ];
+            }
+            ''
+              mkdir -p $out
+              R CMD check --as-cran ${bundle}/*.tar.gz
+              check_success=$?
+              cp -r *.Rcheck $out
+              exit $?
+            '';
+
       in
       {
-        packages.default = chunknet;
-        devShell = pkgs.mkShell {
+        packages = {
+          default = chunknet;
+          bundle = bundle;
+        };
+        devShells.default = pkgs.mkShell {
           buildInputs = [
             R_dev
             radian_dev_exec
           ];
         };
+        checks.default = check;
       }
     );
 }
