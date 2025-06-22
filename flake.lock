@@ -34,11 +34,11 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1747302674,
-        "narHash": "sha256-/4K8FEqq+CA43w/QVH6affeT/Ty8il3zAfkaJpBQ9AI=",
+        "lastModified": 1750590958,
+        "narHash": "sha256-vJahbau3oSFscrwGB2ca4MSJe5pEDK5fIcHVCYgW7ps=",
         "owner": "jcai849",
         "repo": "orcv",
-        "rev": "d7d6dbc34bd2680e9554005a8585521bdac03037",
+        "rev": "f472f983a1e3152620b6e859af9247f2638ecedc",
         "type": "github"
       },
       "original": {
