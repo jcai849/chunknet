@@ -6,3 +6,4 @@ R.core
 *.swp
 .direnv/bin
 .direnv
+result
