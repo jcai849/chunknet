@@ -1,3 +1,5 @@
+importFrom("utils", "glob2rx", "relist")
+
 export(
 	LOCATOR,
 	ChunkReferenceArray,
