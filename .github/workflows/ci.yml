@@ -1,0 +1,31 @@
+name: "Package checks"
+on:
+  pull_request:
+  push:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Download dependencies
+      run: nix develop --command echo "Dependencies downloaded"
+
+    - name: Run checks
+      run: |
+        nix flake check
+        nix build .#checks.x86_64-linux.default
+        cat result/chunknet.Rcheck/00check.log
+
+    - name: Upload check artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: check-artifacts
+        path: result/chunknet.Rcheck/00check.log
+        retention-days: 14
