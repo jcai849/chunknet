@@ -1,5 +1,8 @@
 \name{pull}
 \alias{pull}
+\alias{pull.ChunkReference}
+\alias{pull.character}
+\alias{pull.list}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Pull data to current node
@@ -9,9 +12,9 @@ Synchronous pull of data to current node.
 }
 \usage{
 pull(x, ...)
-pull.ChunkReference(x, ...)
-pull.character(x, ...)
-pull.list(x, ...)
+\method{pull}{ChunkReference}(x, ...)
+\method{pull}{character}(x, ...)
+\method{pull}{list}(x, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

@@ -1,5 +1,6 @@
 \name{worker_node}
-\alias{worker_node,locator_node}
+\alias{worker_node}
+\alias{locator_node}
 \title{
 Cluster node initialisers
 }

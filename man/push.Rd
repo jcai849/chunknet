@@ -1,5 +1,8 @@
 \name{push}
 \alias{push}
+\alias{push.default}
+\alias{push.list}
+\alias{push.Chunk}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Push data to other node
@@ -9,9 +12,9 @@ Push data to another node's message queue.
 }
 \usage{
 push(x, locations, ...)
-push.default(x, locations, post_locs=TRUE,...)
-push.list(x, locations, ...)
-push.Chunk(x, locations, ...)
+\method{push}{default}(x, locations, post_locs=TRUE,...)
+\method{push}{list}(x, locations, ...)
+\method{push}{Chunk}(x, locations, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
